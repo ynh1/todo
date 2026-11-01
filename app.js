@@ -707,17 +707,46 @@ let lockMode = "unlock";        // "unlock" | "setup"
 
 function showLock(kind) {
   lockMode = kind;
-  const lock = $("#lock");
-  lock.classList.add("on");
+  $("#lock").classList.add("on");
 
-  $("#lockSub").textContent = kind === "setup" ? "先设一个密码，数据用它加密" : "输入密码解锁";
-  $("#lockInput").placeholder = kind === "setup" ? "设置密码（至少 8 位）" : "密码";
+  const hasSalt = !!localStorage.getItem(LS.salt);
+  const hasData = hasSalt && !!localStorage.getItem(LS.enc);
+  const sw = $("#switchMode");
+  const note = $("#lockNote");
+
   $("#lockInput").value = "";
   $("#lockInput2").value = "";
-  $("#lockInput2").style.display = kind === "setup" ? "" : "none";
-  $("#lockNote").style.display = kind === "setup" ? "" : "none";
   $("#lockErr").textContent = "";
-  $("#lockBtn").textContent = kind === "setup" ? "设置并进入" : "解锁";
+  $("#rcErr").textContent = "";
+
+  if (kind === "setup") {
+    $("#lockSub").textContent = "先设一个密码，数据用它加密";
+    $("#lockInput").placeholder = "设置密码（至少 8 位）";
+    $("#lockInput2").style.display = "";
+    note.style.display = "";
+    note.innerHTML = "密码不会写进任何文件，<b>只在你脑子里</b>。仓库里存的是密文，别人下载也只能看到乱码。" +
+      "代价是：<b>密码忘了，数据就永久解不开</b> —— 解锁后请偶尔点「导出 JSON」留个备份。";
+    $("#lockBtn").textContent = "设置并进入";
+    // 本机已有数据时不给"重设密码"的入口，避免把旧数据锁死
+    sw.style.display = hasData ? "" : "none";
+    sw.textContent = "已有密码？返回解锁";
+  } else {
+    // 关键：密码跟着「数据」走，不跟着「这台电脑」走。
+    // 新设备没有本机 salt 时也要先问密码，而不是让他重设。
+    $("#lockSub").textContent = hasSalt ? "输入密码解锁" : "这台设备上还没有数据";
+    $("#lockInput").placeholder = "密码";
+    $("#lockInput2").style.display = "none";
+    note.style.display = hasSalt ? "none" : "";
+    if (!hasSalt) {
+      note.innerHTML = "密码跟着<b>数据</b>走，不跟着这台电脑。<br>" +
+        "之前在别的设备用过 → 点「已有数据？从云端恢复」，填仓库信息和<b>你原来那个密码</b>。<br>" +
+        "真是第一次用 → 点「第一次使用？设置新密码」。";
+    }
+    $("#lockBtn").textContent = "解锁";
+    sw.style.display = hasSalt ? "none" : "";
+    sw.textContent = "第一次使用？设置新密码";
+  }
+
   setTimeout(() => $("#lockInput").focus(), 80);
 }
 
@@ -729,6 +758,11 @@ async function submitLock() {
   if (!v) { err.textContent = "请输入密码"; return; }
 
   if (lockMode === "setup") {
+    // 本机已有加密数据时绝不允许在这里重设 —— 换了 salt 旧密文就永远解不开了
+    if (localStorage.getItem(LS.salt) && localStorage.getItem(LS.enc)) {
+      err.textContent = "这台设备上已经有数据了。要改密码请进「设置 → 修改密码」";
+      return;
+    }
     if (v.length < 8) { err.textContent = "至少 8 位，长一点更安全"; return; }
     if (v !== $("#lockInput2").value) { err.textContent = "两次输入不一致"; return; }
     const salt = newSalt();
@@ -738,9 +772,14 @@ async function submitLock() {
     return;
   }
 
-  // 解锁
+  // 解锁：本机没有 salt 就说明这台设备还没接过数据，别拿空 salt 去派生
+  if (!localStorage.getItem(LS.salt)) {
+    err.textContent = "这台设备还没有数据。请用下方「已有数据？从云端恢复」";
+    return;
+  }
+
   try {
-    const salt = unb64(localStorage.getItem(LS.salt) || "");
+    const salt = unb64(localStorage.getItem(LS.salt));
     await installKey(v, salt);
     const data = await loadStored();            // 解密失败 = 密码错
     if (data) applyState(data);
@@ -1071,6 +1110,9 @@ function bind() {
   });
 
   // 从云端恢复
+  $("#switchMode").addEventListener("click", () => {
+    showLock(lockMode === "setup" ? "unlock" : "setup");
+  });
   $("#recoverLink").addEventListener("click", () => {
     const box = $("#recoverBox");
     const show = box.style.display === "none";
@@ -1180,7 +1222,9 @@ async function boot() {
     }
   }
 
-  showLock(hasSalt ? "unlock" : "setup");
+  // 一律先问密码：密码属于数据，不属于这台设备。
+  // 本机没有 salt 时 showLock 会给出「从云端恢复 / 第一次使用」两条路。
+  showLock("unlock");
 }
 
 boot();
