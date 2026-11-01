@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f4f0">
+<title>To Do</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%232f6f5f'/><path d='M28 52l14 14 30-30' stroke='white' stroke-width='11' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<style>
+:root{
+  --bg:#f5f4f0;
+  --panel:#ffffff;
+  --line:#e5e2db;
+  --line-strong:#d6d2c9;
+  --text:#201f1d;
+  --muted:#8d877c;
+  --faint:#b3ada2;
+  --accent:#2f6f5f;
+  --danger:#c0503f;
+  --shadow:0 1px 2px rgba(30,28,25,.05),0 4px 14px rgba(30,28,25,.05);
+  --shadow-lift:0 8px 28px rgba(30,28,25,.16);
+  --radius:10px;
+  --c-inbox:#9b9488;
+  --c-todo:#4a7fd4;
+  --c-doing:#d98c2b;
+  --c-done:#4a9b6e;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+input,textarea{font-family:inherit;font-size:inherit}
+
+/* ---------- 顶栏 ---------- */
+.top{display:flex;align-items:center;gap:12px;padding:14px 20px 10px}
+.brand{font-size:15px;font-weight:650;letter-spacing:.02em;display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(47,111,95,.12)}
+.search{
+  flex:1 1 auto;max-width:320px;display:flex;align-items:center;gap:6px;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:0 10px;height:34px;transition:border-color .15s;
+}
+.search:focus-within{border-color:var(--line-strong)}
+.search input{border:0;outline:0;background:transparent;flex:1;min-width:0;color:var(--text);font-size:13px}
+.search input::placeholder{color:var(--faint)}
+.spacer{flex:1 1 auto}
+.iconbtn{
+  height:34px;padding:0 12px;border-radius:8px;
+  border:1px solid var(--line);background:var(--panel);color:var(--text);
+  display:inline-flex;align-items:center;gap:6px;font-size:13px;
+  transition:background .15s,border-color .15s;
+}
+.iconbtn:hover{background:#fbfaf7;border-color:var(--line-strong)}
+.iconbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:550}
+.iconbtn.primary:hover{background:#27604f;border-color:#27604f}
+.syncchip{
+  display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
+  padding:0 8px;height:34px;border-radius:8px;border:1px solid transparent;cursor:pointer;
+  transition:background .15s;
+}
+.syncchip:hover{background:#efeee9}
+.syncchip i{width:6px;height:6px;border-radius:50%;background:var(--faint);flex:0 0 auto;transition:background .2s}
+.syncchip[data-s="ok"] i{background:var(--c-done)}
+.syncchip[data-s="busy"] i{background:var(--c-doing);animation:pulse 1s infinite}
+.syncchip[data-s="err"] i{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ---------- 添加条 ---------- */
+.addbar{padding:0 20px 14px}
+.addwrap{
+  display:flex;align-items:center;gap:8px;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:4px 4px 4px 14px;transition:border-color .15s,box-shadow .15s;
+}
+.addwrap:focus-within{border-color:var(--line-strong);box-shadow:0 0 0 3px rgba(47,111,95,.07)}
+.addwrap input{flex:1;border:0;outline:0;background:transparent;height:36px;color:var(--text)}
+.addwrap input::placeholder{color:var(--faint)}
+.addwrap .hint{font-size:11px;color:var(--faint);white-space:nowrap;padding-right:4px}
+kbd{
+  display:inline-block;padding:1px 5px;border-radius:4px;
+  border:1px solid var(--line-strong);border-bottom-width:2px;
+  background:#fbfaf7;font-size:10px;font-family:ui-monospace,monospace;color:var(--muted);
+}
+
+/* ---------- 看板 ---------- */
+.board{
+  display:flex;gap:14px;padding:0 20px 20px;
+  height:calc(100vh - 148px);
+  overflow-x:auto;overflow-y:hidden;align-items:stretch;
+}
+.board::-webkit-scrollbar{height:8px}
+.board::-webkit-scrollbar-thumb{background:#ddd9d1;border-radius:4px}
+.col{flex:1 1 240px;min-width:232px;display:flex;flex-direction:column;min-height:0}
+.col-head{display:flex;align-items:center;gap:8px;padding:0 6px 8px;flex:0 0 auto}
+.col-head .bar{width:3px;height:13px;border-radius:2px;flex:0 0 auto}
+.col[data-col="inbox"] .bar{background:var(--c-inbox)}
+.col[data-col="todo"]  .bar{background:var(--c-todo)}
+.col[data-col="doing"] .bar{background:var(--c-doing)}
+.col[data-col="done"]  .bar{background:var(--c-done)}
+.col-head h2{margin:0;font-size:12.5px;font-weight:600;letter-spacing:.04em;color:#55514a}
+.col-head .count{
+  font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;
+  background:#ebe9e3;border-radius:20px;padding:1px 7px;
+}
+.col-head .coladd{
+  margin-left:auto;width:22px;height:22px;border-radius:6px;border:0;background:transparent;
+  color:var(--faint);font-size:15px;line-height:1;display:grid;place-items:center;
+  opacity:0;transition:opacity .15s,background .15s;
+}
+.col-head:hover .coladd{opacity:1}
+.col-head .coladd:hover{background:#e9e7e1;color:var(--text)}
+.col-body{
+  flex:1 1 auto;min-height:52px;overflow-y:auto;overflow-x:hidden;
+  padding:6px;margin:0;display:flex;flex-direction:column;gap:7px;
+  border-radius:11px;background:rgba(32,31,29,.024);
+  transition:background .15s,box-shadow .15s;
+}
+.col-body::-webkit-scrollbar{width:6px}
+.col-body::-webkit-scrollbar-thumb{background:#e0dcd4;border-radius:3px}
+.col-body.droptarget{background:rgba(47,111,95,.07);box-shadow:inset 0 0 0 1.5px rgba(47,111,95,.32)}
+
+/* ---------- 卡片 ---------- */
+.card{
+  position:relative;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--radius);padding:10px 11px 10px 12px;
+  box-shadow:var(--shadow);display:flex;align-items:flex-start;gap:9px;
+  cursor:default;touch-action:pan-y;
+  transition:border-color .15s,box-shadow .15s,transform .1s;
+}
+.card:hover{border-color:var(--line-strong)}
+.card.is-dragging{opacity:.3;box-shadow:none}
+.card.ghost{
+  position:fixed;z-index:9999;pointer-events:none;
+  box-shadow:var(--shadow-lift);transform:rotate(1.2deg) scale(1.02);
+  border-color:var(--line-strong);cursor:grabbing;
+}
+.card .tick{
+  flex:0 0 auto;width:15px;height:15px;margin-top:2px;
+  border-radius:50%;border:1.5px solid var(--line-strong);background:transparent;padding:0;
+  display:grid;place-items:center;transition:border-color .15s,background .15s;
+}
+.card .tick:hover{border-color:var(--accent);background:rgba(47,111,95,.08)}
+.card .tick svg{width:9px;height:9px;opacity:0;color:#fff}
+.col[data-col="doing"] .card .tick{border-color:var(--c-doing);border-style:dashed}
+.col[data-col="done"] .card .tick{background:var(--c-done);border-color:var(--c-done)}
+.col[data-col="done"] .card .tick svg{opacity:1}
+.card .body{flex:1 1 auto;min-width:0}
+.card .title{font-size:13.5px;line-height:1.45;word-break:break-word;white-space:pre-wrap;outline:0}
+.col[data-col="done"] .card .title{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--faint)}
+.card .meta{font-size:10.5px;color:var(--faint);margin-top:3px;display:flex;gap:8px;align-items:center}
+.card .acts{flex:0 0 auto;display:flex;gap:2px;align-items:center;opacity:0;transition:opacity .12s}
+.card:hover .acts{opacity:1}
+.card .acts button{
+  border:0;background:transparent;color:var(--faint);width:22px;height:22px;border-radius:5px;
+  font-size:12px;line-height:1;display:grid;place-items:center;transition:background .12s,color .12s;
+}
+.card .acts button:hover{background:#f0eee8;color:var(--text)}
+.card .acts button.del:hover{background:#fbeeeb;color:var(--danger)}
+.card.editing{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,111,95,.1)}
+.card .editinput{
+  width:100%;border:0;outline:0;background:transparent;resize:none;
+  font-size:13.5px;line-height:1.45;color:var(--text);padding:0;font-family:inherit;
+}
+.empty{
+  color:var(--faint);font-size:12px;text-align:center;
+  padding:11px 16px;border:1px dashed var(--line);border-radius:20px;
+  user-select:none;margin:auto;align-self:center;max-width:100%;
+}
+.placeholder{border:1.5px dashed rgba(47,111,95,.4);background:rgba(47,111,95,.06);border-radius:var(--radius);flex:0 0 auto}
+
+/* ---------- 锁屏 / 引导 ---------- */
+.lock{position:fixed;inset:0;z-index:5000;background:var(--bg);display:none;place-items:center;overflow-y:auto;padding:24px 0}
+.lock.on{display:grid}
+.lock-box{width:min(340px,88vw);text-align:center}
+.lock-box .glyph{width:42px;height:42px;border-radius:12px;margin:0 auto 16px;background:var(--accent);display:grid;place-items:center}
+.lock-box .glyph svg{width:20px;height:20px;color:#fff}
+.lock-box h1{font-size:15px;font-weight:600;margin:0 0 4px}
+.lock-box p.sub{font-size:12px;color:var(--muted);margin:0 0 18px}
+.lock-box input{
+  width:100%;height:38px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel);padding:0 12px;outline:0;text-align:center;letter-spacing:.12em;
+}
+.lock-box input:focus{border-color:var(--accent)}
+.lock-box input + input{margin-top:8px}
+.lock-box .mainbtn{
+  width:100%;height:38px;margin-top:10px;border-radius:8px;border:0;
+  background:var(--accent);color:#fff;font-weight:550;font-size:13px;
+}
+.lock-box .mainbtn:hover{background:#27604f}
+.lock-err{color:var(--danger);font-size:12px;height:18px;margin-top:8px}
+.lock-note{
+  font-size:11px;color:var(--muted);line-height:1.65;margin:6px 0 0;text-align:left;
+  background:#efede7;border-radius:8px;padding:10px 12px;
+}
+.lock-note b{color:#6b655c;font-weight:600}
+.linkbtn{background:none;border:0;color:var(--accent);font-size:12px;padding:6px 0;text-decoration:underline;text-underline-offset:2px}
+#recoverBox{margin-top:4px}
+#recoverBox .mainbtn{background:#5b564d}
+#recoverBox .mainbtn:hover{background:#4a463e}
+
+/* ---------- 设置面板 ---------- */
+dialog{
+  border:0;padding:0;border-radius:14px;background:var(--panel);
+  width:min(580px,92vw);max-height:86vh;color:var(--text);
+  box-shadow:0 24px 70px rgba(30,28,25,.24);
+}
+dialog::backdrop{background:rgba(32,31,29,.32);backdrop-filter:blur(2px)}
+.dlg-head{display:flex;align-items:center;padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+.dlg-head h2{margin:0;font-size:14px;font-weight:600}
+.dlg-head button{
+  margin-left:auto;border:0;background:transparent;color:var(--muted);
+  width:26px;height:26px;border-radius:6px;font-size:16px;line-height:1;
+}
+.dlg-head button:hover{background:#f2f0ea;color:var(--text)}
+.dlg-body{padding:6px 20px 20px;overflow-y:auto;max-height:calc(86vh - 60px)}
+.sec{padding:14px 0;border-bottom:1px solid #f0eee8}
+.sec:last-child{border-bottom:0;padding-bottom:0}
+.sec h3{margin:0 0 4px;font-size:12px;font-weight:600;color:#55514a;letter-spacing:.04em;text-transform:uppercase}
+.sec .desc{font-size:11.5px;color:var(--muted);margin:0 0 10px;line-height:1.6}
+.field{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.field label{flex:0 0 92px;font-size:12px;color:var(--muted)}
+.field input{
+  flex:1;height:32px;border-radius:7px;border:1px solid var(--line);
+  padding:0 10px;outline:0;background:#fbfaf7;font-size:12.5px;min-width:0;
+}
+.field input:focus{border-color:var(--accent);background:#fff}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.row button{
+  height:31px;padding:0 12px;border-radius:7px;border:1px solid var(--line);
+  background:var(--panel);color:var(--text);font-size:12px;
+}
+.row button:hover{background:#fbfaf7;border-color:var(--line-strong)}
+.row button.solid{background:var(--accent);border-color:var(--accent);color:#fff}
+.row button.solid:hover{background:#27604f}
+.row button.warn{color:var(--danger);border-color:#eddbd6}
+.row button.warn:hover{background:#fbeeeb}
+.status{font-size:11.5px;margin-top:8px;min-height:16px;color:var(--muted);line-height:1.6}
+.status.ok{color:var(--c-done)}
+.status.err{color:var(--danger)}
+.steps{margin:8px 0 0;padding-left:16px;font-size:11.5px;color:var(--muted);line-height:1.75}
+.steps code{background:#f2f0ea;padding:1px 4px;border-radius:3px;font-size:11px;font-family:ui-monospace,monospace;color:#55514a}
+.tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:20px;background:#eaf3ef;color:var(--accent);vertical-align:1px}
+
+/* ---------- toast ---------- */
+#toast{
+  position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);
+  background:#2c2a27;color:#f7f6f3;padding:9px 16px;border-radius:8px;
+  font-size:12.5px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+  z-index:9000;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:80vw;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- 窄屏 ---------- */
+@media (max-width:900px){
+  .top{flex-wrap:wrap;padding:12px 14px 8px;gap:8px}
+  .search{max-width:none;order:3;flex-basis:100%}
+  .addbar{padding:0 14px 12px}
+  .board{padding:0 14px 16px;height:calc(100vh - 196px);scroll-snap-type:x mandatory}
+  .col{flex:0 0 auto;width:calc(100vw - 42px);scroll-snap-align:start}
+  .col-head .coladd{opacity:1}
+  .card .acts{opacity:1}
+  .addwrap .hint{display:none}
+  #nextBtn{padding:0 9px}
+  #nextBtn .lbl{display:none}
+  #syncText{display:none}
+  #syncChip{padding:0 4px}
+}
+@media (hover:none){
+  .card .acts{opacity:1}
+  .col-head .coladd{opacity:1}
+}
+</style>
+</head>
+<body>
+
+<!-- 不支持加密时的提示 -->
+<div class="lock" id="unsupported">
+  <div class="lock-box">
+    <div class="glyph" style="background:#c0503f">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M12 8v5"/><circle cx="12" cy="16.5" r=".6" fill="currentColor"/>
+        <path d="M10.3 3.9 2.5 17.4A2 2 0 0 0 4.2 20.5h15.6a2 2 0 0 0 1.7-3.1L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+      </svg>
+    </div>
+    <h1>这里没法加密</h1>
+    <p class="sub">浏览器在 <code>file://</code> 下不提供加密能力</p>
+    <p class="lock-note">
+      直接双击打开的网页，浏览器会关掉 <b>Web Crypto</b>，加密就做不了 —— 而「不加密」意味着数据是明文，谁拿到都能看。
+      <br><br>请改用下面任一方式打开：
+      <br>① <b>部署到 GitHub Pages</b>（推荐，地址是 https，手机也能用）
+      <br>② 在本目录执行 <b>python -m http.server 8000</b>，然后访问 http://localhost:8000
+    </p>
+    <button class="mainbtn" id="forceBtn" style="background:#8d877c">我知道，先以不加密模式试用</button>
+    <p class="lock-note" style="background:#fbeeeb;color:#a0563f">
+      不加密模式下：数据只存在本机、不会上传到 GitHub，密码只做界面遮挡。仅适合本机随便试试。
+    </p>
+  </div>
+</div>
+
+<!-- 解锁 / 首次设密码 -->
+<div class="lock" id="lock">
+  <div class="lock-box">
+    <div class="glyph">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
+      </svg>
+    </div>
+    <h1>To Do</h1>
+    <p class="sub" id="lockSub">输入密码解锁</p>
+    <input type="password" id="lockInput" autocomplete="current-password" placeholder="密码">
+    <input type="password" id="lockInput2" autocomplete="new-password" placeholder="再输一次确认" style="display:none">
+    <button class="mainbtn" id="lockBtn">进入</button>
+    <div class="lock-err" id="lockErr"></div>
+    <p class="lock-note" id="lockNote" style="display:none">
+      密码不会写进任何文件，<b>只在你脑子里</b>。仓库里存的是密文，别人下载也只能看到乱码。
+      代价是：<b>密码忘了，数据就永久解不开</b> —— 解锁后请偶尔点「导出 JSON」留个备份。
+    </p>
+    <button class="linkbtn" id="recoverLink">换了设备？用原密码从云端恢复</button>
+    <div id="recoverBox" style="display:none">
+      <input id="rcOwner" placeholder="GitHub 用户名" autocomplete="off">
+      <input id="rcRepo" placeholder="仓库名" autocomplete="off">
+      <input id="rcPath" placeholder="文件路径（todo.enc.json）" autocomplete="off">
+      <input id="rcToken" type="password" placeholder="Token" autocomplete="off">
+      <input id="rcPass" type="password" placeholder="原密码" autocomplete="off">
+      <button class="mainbtn" id="rcBtn">拉取并恢复</button>
+      <div class="lock-err" id="rcErr"></div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <header class="top">
+    <div class="brand"><span class="dot"></span>To Do</div>
+    <div class="search">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#b3ada2" stroke-width="2.2" stroke-linecap="round">
+        <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+      </svg>
+      <input id="q" type="search" placeholder="搜索任务…">
+    </div>
+    <div class="spacer"></div>
+    <div class="syncchip" id="syncChip" data-s="off" title="云端同步状态">
+      <i></i><span id="syncText">本地</span>
+    </div>
+    <button class="iconbtn" id="nextBtn" title="把「待办」第一条推到「进行中」">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <span class="lbl">开始下一个</span>
+    </button>
+    <button class="iconbtn" id="setBtn" title="设置">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.7 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.09a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="addbar">
+    <div class="addwrap">
+      <input id="addInput" type="text" placeholder="突然想到什么？回车记下来，先扔进想法池" autocomplete="off">
+      <span class="hint"><kbd>Enter</kbd> 添加</span>
+      <button class="iconbtn primary" id="addBtn" style="height:32px">添加</button>
+    </div>
+  </div>
+
+  <main class="board" id="board">
+    <section class="col" data-col="inbox">
+      <div class="col-head"><span class="bar"></span><h2>想法池</h2><span class="count">0</span>
+        <button class="coladd" data-add="inbox" title="添加到想法池">+</button></div>
+      <div class="col-body" data-body="inbox"></div>
+    </section>
+    <section class="col" data-col="todo">
+      <div class="col-head"><span class="bar"></span><h2>待办</h2><span class="count">0</span>
+        <button class="coladd" data-add="todo" title="添加到待办">+</button></div>
+      <div class="col-body" data-body="todo"></div>
+    </section>
+    <section class="col" data-col="doing">
+      <div class="col-head"><span class="bar"></span><h2>进行中</h2><span class="count">0</span>
+        <button class="coladd" data-add="doing" title="添加到进行中">+</button></div>
+      <div class="col-body" data-body="doing"></div>
+    </section>
+    <section class="col" data-col="done">
+      <div class="col-head"><span class="bar"></span><h2>已完成</h2><span class="count">0</span>
+        <button class="coladd" data-add="done" title="添加到已完成">+</button></div>
+      <div class="col-body" data-body="done"></div>
+    </section>
+  </main>
+</div>
+
+<dialog id="settings">
+  <div class="dlg-head">
+    <h2>设置</h2>
+    <button id="dlgClose" title="关闭">&times;</button>
+  </div>
+  <div class="dlg-body">
+
+    <div class="sec">
+      <h3>云端同步 <span class="tag">已加密</span></h3>
+      <p class="desc">
+        仓库公开也没关系 —— 上传的是<b>用你密码加密过的密文</b>，别人打开仓库只能看到一堆乱码。
+        没配也能用，数据只存在本机。
+      </p>
+      <div class="field"><label>用户名</label><input id="ghOwner" placeholder="GitHub 用户名，例如 zhangsan"></div>
+      <div class="field"><label>仓库名</label><input id="ghRepo" placeholder="例如 my-todo（公开或私有都行）"></div>
+      <div class="field"><label>文件路径</label><input id="ghPath" placeholder="todo.enc.json"></div>
+      <div class="field"><label>Token</label><input id="ghToken" type="password" placeholder="github_pat_..."></div>
+      <div class="row">
+        <button class="solid" id="ghSave">保存并测试</button>
+        <button id="ghPull">从云端拉取</button>
+        <button id="ghPush">立即上传</button>
+      </div>
+      <div class="status" id="ghStatus"></div>
+      <ol class="steps">
+        <li>GitHub → Settings → Developer settings → <code>Personal access tokens</code> → Fine-grained tokens</li>
+        <li>Repository access 选 <code>Only select repositories</code>，只勾这一个仓库</li>
+        <li>Permissions → Repository permissions → <code>Contents</code> 设为 <b>Read and write</b></li>
+        <li>Token 粘到上面保存即可。Token 存在本机浏览器里，不会进仓库。</li>
+      </ol>
+    </div>
+
+    <div class="sec">
+      <h3>修改密码</h3>
+      <p class="desc">
+        改密码会用新密码把整份数据重新加密一遍，并自动同步到云端。
+        其他设备下次打开时，要用<b>新密码</b>才能解开。
+      </p>
+      <div class="field"><label>新密码</label><input id="pwNew" type="password" placeholder="至少 8 位，建议长一点" autocomplete="new-password"></div>
+      <div class="field"><label>再输一次</label><input id="pwNew2" type="password" placeholder="确认新密码" autocomplete="new-password"></div>
+      <div class="row">
+        <button class="solid" id="pwSave">修改密码</button>
+        <button id="pwLock">立即锁定</button>
+      </div>
+      <div class="status" id="pwStatus"></div>
+    </div>
+
+    <div class="sec">
+      <h3>数据</h3>
+      <div class="row">
+        <button id="exportBtn">导出 JSON</button>
+        <button id="importBtn">导入 JSON</button>
+        <button class="warn" id="clearDone">清空已完成</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <div class="status" id="dataStatus"></div>
+    </div>
+
+    <div class="sec">
+      <h3>快捷键</h3>
+      <p class="desc" style="margin:0">
+        <kbd>N</kbd> 聚焦输入框　·　<kbd>Enter</kbd> 添加　·　<kbd>双击标题</kbd> 改文字　·　
+        <kbd>拖拽卡片</kbd> 排序 / 换列（手机上长按）　·　<kbd>/</kbd> 搜索　·　<kbd>Esc</kbd> 取消编辑
+      </p>
+    </div>
+
+  </div>
+</dialog>
+
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
