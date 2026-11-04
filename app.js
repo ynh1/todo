@@ -13,7 +13,9 @@ const LS = {
   enc:   "todo.enc.v1",                    // 本地密文
   plain: "todo.plain.v1",                  // 不加密模式（file:// 兜底）
   cfg:   "todo.gh.v1",                     // GitHub 配置
-  salt:  "todo.salt.v1"                    // 本机 salt
+  salt:  "todo.salt.v1",                   // 本机 salt
+  rem:   "todo.pw.remember.v1",            // 记住的密码（可选，本机）
+  remOn: "todo.pw.rememberOn.v1"           // 「记住密码」的开关偏好
 };
 const SS = { pw: "todo.pw.session" };      // 当前标签页会话内的密码
 
@@ -111,6 +113,41 @@ async function installKey(password, saltBytes) {
   keySalt = saltBytes;
   sessionStorage.setItem(SS.pw, password);
   localStorage.setItem(LS.salt, b64(saltBytes));
+}
+
+/* ==================== 本机记住密码（可选） ====================
+ * 关掉「记住密码」时，密码只活在当前标签页的 sessionStorage 里，
+ * 关掉标签页就没了 —— 这正是每次都要重输的原因。
+ * 打开后密码会被写到 localStorage，下次打开静默解锁。
+ */
+function rememberPref() {
+  const v = localStorage.getItem(LS.remOn);
+  return v === null ? true : v === "1";      // 默认勾上：本来就是为了少输密码
+}
+function setRememberPref(on) {
+  try { localStorage.setItem(LS.remOn, on ? "1" : "0"); } catch (e) { /* 忽略 */ }
+}
+function readRemembered() {
+  try {
+    const raw = localStorage.getItem(LS.rem);
+    return raw ? b64ToUtf8(raw) : "";
+  } catch (e) { return ""; }
+}
+function writeRemembered(pw) {
+  try {
+    if (pw) localStorage.setItem(LS.rem, utf8ToB64(pw));
+    else localStorage.removeItem(LS.rem);
+  } catch (e) { /* 忽略 */ }
+}
+/** 解锁成功后按勾选状态落盘 */
+function applyRemember(pw) {
+  const on = !!($("#rememberPw") && $("#rememberPw").checked);
+  setRememberPref(on);
+  writeRemembered(on ? pw : "");
+}
+function syncRememberTip() {
+  const tip = $("#rememberTip");
+  if (tip) tip.hidden = !($("#rememberPw") && $("#rememberPw").checked);
 }
 
 async function encryptState(obj) {
@@ -718,6 +755,9 @@ function showLock(kind) {
   $("#lockInput2").value = "";
   $("#lockErr").textContent = "";
   $("#rcErr").textContent = "";
+  $("#userRow").style.display = "none";
+  $("#rememberPw").checked = rememberPref();
+  syncRememberTip();
 
   if (kind === "setup") {
     $("#lockSub").textContent = "先设一个密码，数据用它加密";
@@ -750,7 +790,15 @@ function showLock(kind) {
   setTimeout(() => $("#lockInput").focus(), 80);
 }
 
+let lockBusy = false;
 async function submitLock() {
+  if (lockBusy) return;                       // 回车 + 提交事件可能撞车，防重入
+  lockBusy = true;
+  try { await doSubmitLock(); }
+  finally { lockBusy = false; }
+}
+
+async function doSubmitLock() {
   const err = $("#lockErr");
   err.textContent = "";
   const v = $("#lockInput").value;
@@ -767,6 +815,7 @@ async function submitLock() {
     if (v !== $("#lockInput2").value) { err.textContent = "两次输入不一致"; return; }
     const salt = newSalt();
     await installKey(v, salt);
+    applyRemember(v);
     $("#lock").classList.remove("on");
     await enterApp(true);
     return;
@@ -783,6 +832,7 @@ async function submitLock() {
     await installKey(v, salt);
     const data = await loadStored();            // 解密失败 = 密码错
     if (data) applyState(data);
+    applyRemember(v);
     $("#lock").classList.remove("on");
     await enterApp(false);
   } catch (e) {
@@ -824,6 +874,7 @@ async function recoverFromCloud() {
     // 接管：把本机 salt / key 换成这份数据对应的
     const salt = unb64(cur.payload.salt);
     await installKey(pass, salt);
+    applyRemember(pass);
 
     saveCfg();
     applyState(data);
@@ -1029,6 +1080,7 @@ function bind() {
     try {
       const salt = newSalt();
       await installKey(a, salt);
+      if (rememberPref()) writeRemembered(a);   // 记住的密码跟着换成新的
       await doPersist();
       $("#pwNew").value = "";
       $("#pwNew2").value = "";
@@ -1051,8 +1103,20 @@ function bind() {
     sessionStorage.removeItem(SS.pw);
     cryptoKey = null;
     keySalt = null;
+    // 真锁：连「记住的密码」一起清掉，否则合上电脑再打开又自动开了
+    writeRemembered("");
+    setRememberPref(false);
     $("#settings").close();
     showLock("unlock");
+  });
+
+  $("#forgetPw").addEventListener("click", () => {
+    const st = $("#pwStatus");
+    if (!readRemembered()) { st.className = "status"; st.textContent = "本机没有保存密码"; return; }
+    writeRemembered("");
+    setRememberPref(false);
+    st.className = "status ok";
+    st.textContent = "已清除。下次打开需要重新输密码。";
   });
 
   // 数据
@@ -1099,14 +1163,33 @@ function bind() {
   });
 
   // 锁屏
-  $("#lockBtn").addEventListener("click", submitLock);
-  $("#lockInput").addEventListener("keydown", e => {
-    if (e.key !== "Enter" || e.isComposing) return;
-    if (lockMode === "setup" && !$("#lockInput2").value) { $("#lockInput2").focus(); return; }
+  $("#lockForm").addEventListener("submit", e => {
+    e.preventDefault();
     submitLock();
   });
-  $("#lockInput2").addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.isComposing) submitLock();
+  $("#lockInput").addEventListener("keydown", e => {
+    if (e.key !== "Enter" || e.isComposing) return;
+    // 设密码时先在「密码」框回车 → 跳到确认框，其余交给表单提交
+    if (lockMode === "setup" && !$("#lockInput2").value) {
+      e.preventDefault();
+      $("#lockInput2").focus();
+    }
+  });
+  $("#rememberPw").addEventListener("change", () => {
+    const on = $("#rememberPw").checked;
+    setRememberPref(on);
+    if (!on) writeRemembered("");              // 取消勾选 = 立刻删掉本机存的密码
+    syncRememberTip();
+  });
+  // 把「账号」框放出来，Edge / Chrome 才会把它当成登录表单来记密码
+  $("#edgeLink").addEventListener("click", () => {
+    const row = $("#userRow");
+    const open = row.style.display === "none";
+    row.style.display = open ? "block" : "none";
+    if (open) {
+      $("#lockUser").focus();
+      toast("先随便填个账号名，再输密码 —— Edge 会问要不要保存");
+    }
   });
 
   // 从云端恢复
@@ -1202,9 +1285,12 @@ async function boot() {
   bind();
 
   const hasSalt = !!localStorage.getItem(LS.salt);
-  const savedPw = sessionStorage.getItem(SS.pw);
+  let savedPw = sessionStorage.getItem(SS.pw);
 
-  // 同一标签页刷新 → 用会话里的密码静默解锁
+  // 本标签页里没有会话密码 → 看看是不是勾了「记住密码」
+  if (!savedPw && hasSalt && rememberPref()) savedPw = readRemembered();
+
+  // 同一标签页刷新 / 记住了密码 → 用存下的密码静默解锁
   if (hasSalt && savedPw) {
     try {
       await installKey(savedPw, unb64(localStorage.getItem(LS.salt)));
@@ -1219,6 +1305,7 @@ async function boot() {
       cryptoKey = null;
       keySalt = null;
       sessionStorage.removeItem(SS.pw);
+      writeRemembered("");                    // 存着的密码已经解不开当前数据了，清掉
     }
   }
 
