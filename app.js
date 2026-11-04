@@ -234,7 +234,9 @@ async function loadStored() {
 
 function applyState(d) {
   state = normalize(d);
+  focusSanity();
   render();
+  paintAllFocus();
 }
 
 /* ==================== 渲染 ==================== */
@@ -279,7 +281,7 @@ function emptyHint(col) {
   return {
     inbox: "想到什么就先丢这里",
     todo: "把想法池里要做的挪过来",
-    doing: "一次只专注一件事",
+    doing: "先只做 1 分钟，动起来再说",
     done: "还没有完成的任务"
   }[col] || "空";
 }
@@ -306,13 +308,21 @@ function cardEl(it, col) {
   title.textContent = it.title;
   body.appendChild(title);
 
+  // 只有「进行中」的卡片带计时器和钩子 —— 别处不需要，也就不出现
+  if (col === "doing") {
+    body.appendChild(focusRowFor(it.id));
+    body.appendChild(hookEl(it));
+  }
+
   const bits = [];
   if (it.createdAt) bits.push(fmtTime(it.createdAt));
   if (col === "done" && it.doneAt) bits.push("完成于 " + fmtTime(it.doneAt));
-  if (bits.length) {
+  const dl = it.deadline ? deadlineEl(it, col) : null;
+  if (bits.length || dl) {
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.textContent = bits.join(" · ");
+    if (bits.length) meta.appendChild(document.createTextNode(bits.join(" · ")));
+    if (dl) meta.appendChild(dl);
     body.appendChild(meta);
   }
   el.appendChild(body);
@@ -332,6 +342,13 @@ function cardEl(it, col) {
     b.title = nx[2];
     b.addEventListener("click", ev => { ev.stopPropagation(); moveTo(it.id, nx[0]); });
     acts.appendChild(b);
+  }
+  if (col === "todo" || col === "doing" || it.deadline) {
+    const dlBtn = document.createElement("button");
+    dlBtn.title = it.deadline ? "改截止日期" : "设截止日期";
+    dlBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>';
+    dlBtn.addEventListener("click", ev => { ev.stopPropagation(); editDeadline(it.id); });
+    acts.appendChild(dlBtn);
   }
   const del = document.createElement("button");
   del.className = "del";
@@ -410,14 +427,17 @@ function moveTo(id, targetCol) {
   if (targetCol === "done") it.doneAt = Date.now();
   else delete it.doneAt;
   state.items[targetCol].push(it);
+  if (targetCol !== "doing") stopFocusIf(id, true);   // 挪出「进行中」就收掉计时
   persist();
   render();
+  if (targetCol === "doing") nudgeStart(it);
 }
 
 function removeItem(id) {
   const found = findItem(id);
   if (!found) return;
   const removed = state.items[found.col].splice(found.index, 1)[0];
+  stopFocusIf(id, true);
   persist();
   render();
   toast("已删除「" + truncate(removed.title, 18) + "」");
@@ -431,7 +451,7 @@ function onPointerDown(e) {
   if (e.button !== undefined && e.button !== 0) return;
   const card = e.target.closest(".card");
   if (!card) return;
-  if (e.target.closest("button") || e.target.closest(".editinput")) return;
+  if (e.target.closest("button, input, textarea, select")) return;   // 别把点输入框当成拖卡片
   if (editingId) return;
 
   drag = {
@@ -574,8 +594,10 @@ function applyDrop(id, targetCol, index) {
   const arr = state.items[targetCol];
   arr.splice(Math.max(0, Math.min(index, arr.length)), 0, it);
 
+  if (targetCol !== "doing") stopFocusIf(id, true);
   persist();
   render();
+  if (targetCol === "doing") nudgeStart(it);
 }
 
 /* ==================== 开始下一个 ==================== */
@@ -600,7 +622,318 @@ function startNext() {
   }
   const first = state.items.todo[0];
   moveTo(first.id, "doing");
-  toast("开始：「" + truncate(first.title, 18) + "」");
+}
+
+/* ==================== 专注计时（进行中的卡片） ====================
+ * 一次只计一件事：卡片上点 10′/25′/45′ 就开始，同时只会有一个计时。
+ * 计时状态存 localStorage，关掉浏览器再回来还接着走（按结束时间算，不会走偏）。
+ */
+const FOCUS_KEY = "todo.focus.v1";
+const FOCUS_MINUTES = [10, 25, 45];
+const BREAK_MIN = 5;
+
+let focus = null;          // { id, dur, status:"run"|"pause", endAt, left, phase:"work"|"break" }
+let audioCtx = null;
+
+function loadFocus() {
+  try {
+    const f = JSON.parse(localStorage.getItem(FOCUS_KEY) || "null");
+    if (!f || !f.id || !f.dur) return;
+    if (f.status === "run" && f.endAt && f.endAt <= Date.now()) return;  // 关页面期间就到点了，作废
+    focus = f;
+  } catch (e) { focus = null; }
+}
+function saveFocus() {
+  try {
+    if (focus) localStorage.setItem(FOCUS_KEY, JSON.stringify(focus));
+    else localStorage.removeItem(FOCUS_KEY);
+  } catch (e) { /* 忽略 */ }
+}
+function focusLeft() {
+  if (!focus) return 0;
+  if (focus.status === "run" && focus.endAt) return Math.max(0, Math.ceil((focus.endAt - Date.now()) / 1000));
+  return Math.max(0, Math.floor(focus.left || 0));
+}
+function mmss(s) {
+  s = Math.max(0, Math.round(s));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+function beep(freq, dur) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "sine";
+    o.frequency.value = freq || 660;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.12));
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + (dur || 0.12) + 0.03);
+  } catch (e) { /* 禁音就算了 */ }
+}
+
+function startFocus(id, minutes) {
+  const found = findItem(id);
+  if (!found) return;
+  if (focus && focus.id !== id) {
+    const prev = findItem(focus.id);
+    toast("「" + truncate(prev ? prev.item.title : "上一个", 12) + "」的计时已切到这里");
+  }
+  focus = {
+    id, dur: minutes * 60, phase: "work",
+    status: "run", endAt: Date.now() + minutes * 60000, left: minutes * 60
+  };
+  saveFocus();
+  beep(680, 0.09);
+  toast(found.item.next
+    ? "专注 " + minutes + " 分钟 —— " + truncate(found.item.next, 16)
+    : "专注 " + minutes + " 分钟 —— 只做这一件");
+  paintAllFocus();
+}
+function pauseFocus() {
+  if (!focus || focus.status !== "run") return;
+  focus.left = focusLeft();
+  focus.status = "pause";
+  focus.endAt = 0;
+  saveFocus();
+  paintAllFocus();
+}
+function resumeFocus() {
+  if (!focus || focus.status !== "pause") return;
+  focus.status = "run";
+  focus.endAt = Date.now() + (focus.left || 0) * 1000;
+  saveFocus();
+  paintAllFocus();
+}
+function stopFocus(silent) {
+  if (!focus) return;
+  const wasBreak = focus.phase === "break";
+  focus = null;
+  saveFocus();
+  paintAllFocus();
+  if (!silent) toast(wasBreak ? "休息跳过" : "计时已停");
+}
+function endBreak() { stopFocus(false); }
+
+/** 一段结束：工作 → 5 分钟休息；休息结束 → 收工 */
+function finishPhase() {
+  if (!focus) return;
+  if (focus.phase === "work") {
+    beep(880, 0.12);
+    setTimeout(() => beep(1174, 0.16), 210);
+    focus = {
+      id: focus.id, dur: BREAK_MIN * 60, phase: "break",
+      status: "run", endAt: Date.now() + BREAK_MIN * 60000, left: BREAK_MIN * 60
+    };
+    saveFocus();
+    paintAllFocus();
+    toast("到点了 —— 站起来走 5 分钟");
+  } else {
+    beep(520, 0.12);
+    focus = null;
+    saveFocus();
+    paintAllFocus();
+    toast("休息结束，回来做下一件");
+  }
+}
+function tickFocus() {
+  if (!focus) { updateFocusTitle(); return; }
+  if (focus.status === "run" && focusLeft() <= 0) { finishPhase(); return; }
+  paintAllFocus();
+}
+function startFocusClock() {
+  clearInterval(window.__focusTimer);
+  window.__focusTimer = setInterval(tickFocus, 500);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) tickFocus(); });
+}
+function updateFocusTitle() {
+  document.title = focus
+    ? (focus.phase === "break" ? "休息 " : "") + mmss(focusLeft()) + " · To Do"
+    : "To Do";
+}
+
+/** 把当前计时状态画到每一行上（只有状态变了才重建 DOM） */
+function paintAllFocus() {
+  $$(".focus").forEach(row => {
+    const on = !!(focus && focus.id === row.dataset.fid);
+    const sig = on ? (focus.phase === "break" ? "break" : focus.status) : "idle";
+    if (row.dataset.sig !== sig) buildFocusRow(row, row.dataset.fid);
+    else if (on) updateFocusText(row);
+  });
+  updateFocusTitle();
+}
+function focusRowFor(id) {
+  const row = document.createElement("div");
+  row.className = "focus";
+  row.dataset.fid = id;
+  buildFocusRow(row, id);
+  return row;
+}
+function buildFocusRow(row, id) {
+  const on = !!(focus && focus.id === id);
+  const sig = on ? (focus.phase === "break" ? "break" : focus.status) : "idle";
+  row.dataset.sig = sig;
+  row.className = "focus" + (on ? " " + sig : "");
+  row.innerHTML = "";
+
+  if (!on) {
+    const n = document.createElement("span");
+    n.className = "fnote";
+    n.textContent = "专注";
+    row.appendChild(n);
+    FOCUS_MINUTES.forEach(m => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "fp";
+      b.title = "专注 " + m + " 分钟";
+      b.textContent = m + "′";
+      b.addEventListener("click", ev => { ev.stopPropagation(); startFocus(id, m); });
+      row.appendChild(b);
+    });
+    return;
+  }
+
+  const ft = document.createElement("span");
+  ft.className = "ft";
+  row.appendChild(ft);
+
+  const bar = document.createElement("span");
+  bar.className = "fbar";
+  bar.appendChild(document.createElement("i"));
+  row.appendChild(bar);
+
+  const act = document.createElement("button");
+  act.type = "button";
+  act.className = "fx";
+  if (focus.phase === "break") {
+    act.textContent = "跳过";
+    act.addEventListener("click", ev => { ev.stopPropagation(); endBreak(); });
+  } else {
+    act.textContent = focus.status === "run" ? "暂停" : "继续";
+    act.addEventListener("click", ev => {
+      ev.stopPropagation();
+      if (focus.status === "run") pauseFocus(); else resumeFocus();
+    });
+  }
+  row.appendChild(act);
+
+  const x = document.createElement("button");
+  x.type = "button";
+  x.className = "fx stop";
+  x.title = "结束计时";
+  x.textContent = "×";
+  x.addEventListener("click", ev => { ev.stopPropagation(); stopFocus(false); });
+  row.appendChild(x);
+
+  updateFocusText(row);
+}
+function updateFocusText(row) {
+  if (!focus) return;
+  const left = focusLeft();
+  const t = row.querySelector(".ft");
+  if (t) t.textContent = (focus.phase === "break" ? "休息 " : "") + mmss(left);
+  const i = row.querySelector(".fbar i");
+  if (i) i.style.width = Math.max(0, Math.min(100, (left / focus.dur) * 100)).toFixed(1) + "%";
+}
+/** 卡片被挪走 / 删掉时，把它的计时也收掉 */
+function stopFocusIf(id, silent) {
+  if (focus && focus.id === id) stopFocus(silent);
+}
+/** 数据换了之后，计时指向的卡片可能已经不在了 */
+function focusSanity() {
+  if (focus && !findItem(focus.id)) { focus = null; saveFocus(); }
+}
+
+/* ==================== 钩子：下一步 ==================== */
+function hookEl(it) {
+  const wrap = document.createElement("div");
+  wrap.className = "hook";
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.autocomplete = "off";
+  inp.value = it.next || "";
+  inp.placeholder = "下一步：写一半就停在这";
+  inp.addEventListener("keydown", e => {
+    if (e.isComposing) return;
+    if (e.key === "Enter") { e.preventDefault(); inp.blur(); }
+    if (e.key === "Escape") { inp.value = it.next || ""; inp.blur(); }
+  });
+  inp.addEventListener("blur", () => {
+    const v = inp.value.trim();
+    const found = findItem(it.id);
+    if (!found) return;
+    if (v === (found.item.next || "")) return;
+    if (v) found.item.next = v; else delete found.item.next;
+    found.item.updatedAt = Date.now();
+    persist();
+  });
+  wrap.appendChild(inp);
+  return wrap;
+}
+
+/* ==================== 截止日期 ==================== */
+function fmtDeadline(d) {
+  const p = String(d).split("-").map(Number);
+  if (p.length !== 3 || !p[1] || !p[2]) return { text: d, cls: "" };
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = new Date(p[0], p[1] - 1, p[2]);
+  const diff = Math.round((day - today) / 86400000);
+  if (diff < 0) return { text: "逾期 " + (-diff) + " 天", cls: "over" };
+  if (diff === 0) return { text: "今天截止", cls: "soon" };
+  if (diff === 1) return { text: "明天截止", cls: "soon" };
+  if (diff <= 3) return { text: diff + " 天后截止", cls: "soon" };
+  const ago = now.getFullYear() === p[0] ? "" : p[0] + "/";
+  return { text: ago + p[1] + "月" + p[2] + "日前", cls: "" };
+}
+function deadlineEl(it, col) {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className = "dl";
+  const f = fmtDeadline(it.deadline);
+  el.textContent = f.text;
+  el.title = "截止 " + it.deadline + "（点击修改）";
+  if (col === "done") el.classList.add("is-done");
+  else if (f.cls) el.classList.add(f.cls);
+  el.addEventListener("click", ev => { ev.stopPropagation(); editDeadline(it.id); });
+  return el;
+}
+function editDeadline(id) {
+  const found = findItem(id);
+  if (!found) return;
+  pickDate(found.item.deadline || "", v => {
+    const f = findItem(id);
+    if (!f) return;
+    if (v) f.item.deadline = v; else delete f.item.deadline;
+    f.item.updatedAt = Date.now();
+    persist();
+    render();
+    toast(v ? "截止：" + fmtDeadline(v).text : "已去掉截止日期");
+  });
+}
+let datePicker = null;
+function pickDate(cur, cb) {
+  if (!datePicker) {
+    datePicker = document.createElement("input");
+    datePicker.type = "date";
+    datePicker.className = "dinput";
+    document.body.appendChild(datePicker);
+  }
+  datePicker.value = cur || "";
+  datePicker.onchange = () => cb(datePicker.value);
+  try {
+    if (datePicker.showPicker) datePicker.showPicker();
+    else datePicker.focus();
+  } catch (e) { datePicker.focus(); }
+}
+
+/* ==================== 微启动 ==================== */
+/** 东西刚挪进「进行中」时的那句提示：目标不是做完，是动起来 */
+function nudgeStart(it) {
+  if (focus || !it) return;
+  const tip = it.next ? "下一步：" + truncate(it.next, 16) : "打开它，写一行就行";
+  toast("「" + truncate(it.title, 12) + "」先做 1 分钟 —— " + tip);
 }
 
 /* ==================== GitHub 同步 ==================== */
@@ -1272,6 +1605,8 @@ function startPlainMode() {
 /* ==================== 启动 ==================== */
 async function boot() {
   loadCfg();
+  loadFocus();
+  startFocusClock();
 
   if (!CAN_ENCRYPT) {
     $("#unsupported").classList.add("on");
