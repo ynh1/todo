@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f4f0">
+<title>推进台 · 与 To Do 联动</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%232f6f5f'/><path d='M22 52h14M40 52h20M64 52h16' stroke='white' stroke-width='9' stroke-linecap='round'/></svg>">
+<style>
+:root{
+  --bg:#f5f4f0; --panel:#fff; --line:#e5e2db; --line-strong:#d6d2c9;
+  --text:#201f1d; --muted:#8d877c; --faint:#b3ada2; --accent:#2f6f5f;
+  --danger:#c0503f; --warn:#d98c2b; --ok:#4a9b6e;
+  --shadow:0 1px 2px rgba(30,28,25,.05),0 4px 14px rgba(30,28,25,.05);
+  --radius:10px;
+  --c-inbox:#9b9488; --c-todo:#4a7fd4; --c-doing:#d98c2b; --c-done:#4a9b6e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font-family:inherit;font-size:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+
+.top{display:flex;align-items:center;gap:10px;padding:14px 20px 10px;flex-wrap:wrap}
+.brand{font-size:15px;font-weight:650;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+.brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(47,111,95,.12)}
+.spacer{flex:1 1 auto}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
+  padding:0 10px;height:30px;border-radius:20px;border:1px solid var(--line);background:var(--panel)}
+.chip i{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+.chip[data-s="on"] i{background:var(--ok)} .chip[data-s="on"]{color:var(--accent);border-color:#bcd8cd}
+.chip[data-s="lock"] i{background:var(--warn)}
+.iconbtn{height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel);color:var(--text);display:inline-flex;align-items:center;gap:6px;
+  font-size:13px;text-decoration:none}
+.iconbtn:hover{background:#fbfaf7;border-color:var(--line-strong)}
+.iconbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:550}
+.iconbtn.primary:hover{background:#27604f}
+.iconbtn:disabled{opacity:.45;cursor:not-allowed}
+
+.linkbar{margin:0 20px 14px;padding:9px 14px;border:1px solid var(--line);border-radius:10px;
+  background:var(--panel);font-size:12.5px;color:var(--muted);display:flex;gap:18px;flex-wrap:wrap}
+.linkbar b{color:var(--text);font-weight:600}
+.linkbar .arr{color:var(--accent);font-weight:600}
+
+.wrap{padding:0 20px 32px}
+.grid{display:grid;grid-template-columns:minmax(340px,1.55fr) minmax(260px,1fr) minmax(250px,1fr);
+  gap:14px;align-items:start}
+@media(max-width:1080px){.grid{grid-template-columns:1fr 1fr}.hero{grid-column:1/-1}}
+@media(max-width:720px){.grid{grid-template-columns:1fr}.hero{grid-column:auto}}
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);
+  padding:14px 16px 16px;margin-bottom:14px;min-width:0}
+.sec>h2{margin:0 0 10px;font-size:12.5px;font-weight:650;letter-spacing:.04em;color:#55514a;
+  display:flex;align-items:center;gap:8px}
+.sec>h2 .n{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;
+  background:#ebe9e3;border-radius:20px;padding:1px 7px}
+.sec>h2 .tail{margin-left:auto;font-weight:400;color:var(--faint)}
+.hero{border-left:3px solid var(--accent)}
+
+.empty{color:var(--faint);font-size:12.5px;padding:10px 2px}
+.card{border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:8px;background:#fdfdfc}
+.card .t{font-weight:600;font-size:13.5px;overflow-wrap:anywhere}
+.card .m{font-size:11.5px;color:var(--faint);margin-top:3px}
+.card .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{font-size:10.5px;padding:1px 7px;border-radius:20px;background:#ebe9e3;color:var(--muted)}
+.tag[data-c="doing"]{background:#faeddc;color:#9a6118}
+.tag[data-c="done"]{background:#e2f1e7;color:#2e714c}
+.tag[data-c="todo"]{background:#e6effb;color:#33619c}
+.tag.warn{background:#fbe9e5;color:var(--danger)}
+
+.mini{height:26px;padding:0 9px;border-radius:7px;border:1px solid var(--line);
+  background:#fff;color:var(--text);font-size:11.5px}
+.mini:hover{border-color:var(--line-strong);background:#fbfaf7}
+.mini.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.mini.go:hover{background:#27604f}
+
+.field{margin-bottom:9px}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;letter-spacing:.02em}
+.field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:8px;
+  padding:7px 9px;background:#fff;color:var(--text);outline:0;font-size:13px}
+.field input:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,111,95,.07)}
+.field textarea{resize:vertical;min-height:44px}
+.field .req{color:var(--danger)}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+@media(max-width:520px){.two{grid-template-columns:1fr}}
+
+.steps{list-style:none;margin:4px 0 0;padding:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.steps li{display:flex;align-items:flex-start;gap:8px;padding:6px 9px;border-bottom:1px solid var(--line);font-size:12.5px}
+.steps li:last-child{border-bottom:0}
+.steps li input{width:14px;height:14px;margin-top:3px;flex:0 0 auto;accent-color:var(--accent)}
+.steps li.done span{color:var(--faint);text-decoration:line-through}
+.steps li span{flex:1;overflow-wrap:anywhere}
+
+.hook{background:#fbf7ee;border:1px solid #ecdfc6;border-radius:9px;padding:9px 11px;
+  font-size:12.5px;color:#7a6031;margin-bottom:10px}
+.hook b{color:#5c471d}
+.focusbox{border:1px dashed var(--line-strong);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--muted)}
+.focusbox b{color:var(--text);font-variant-numeric:tabular-nums}
+
+.btns{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.btns button{height:32px;padding:0 13px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:12.5px}
+.btns button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:550}
+.btns button:hover{border-color:var(--line-strong)}
+.btns button:disabled{opacity:.45;cursor:not-allowed}
+
+.fuel{display:flex;gap:16px;flex-wrap:wrap;align-items:baseline}
+.fuel .big{font-size:30px;font-weight:650;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1}
+.fuel .lb{font-size:11.5px;color:var(--muted)}
+
+.log{font-size:11.5px;color:var(--muted);max-height:132px;overflow:auto}
+.log div{padding:3px 0;border-bottom:1px dashed var(--line)}
+.log div:last-child{border-bottom:0}
+.log .ok{color:var(--ok)} .log .err{color:var(--danger)}
+.qbar{margin:0 20px 14px;padding:9px 13px;border:1px solid var(--line);border-radius:10px;
+  background:#fff;font-size:12.5px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.qbar .warn{color:var(--danger)}
+.foot{margin:4px 20px 30px;font-size:11.5px;color:var(--faint);line-height:1.7}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#201f1d;color:#fff;
+  padding:8px 16px;border-radius:20px;font-size:12.5px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><span class="dot"></span>推进台</div>
+  <div class="chip" id="linkChip" data-s="off"><i></i><span id="linkText">等待 To Do…</span></div>
+  <div class="spacer"></div>
+  <span class="chip" id="qChip"><i></i><span id="qText">待同步 0</span></span>
+  <button class="iconbtn" id="clearQ" title="清空还没被 To Do 执行的命令">清空队列</button>
+  <a class="iconbtn primary" href="index.html" target="_blank" id="openTodo">打开 To Do ↗</a>
+</header>
+
+<div class="linkbar">
+  <span><b>To Do → 推进台</b>：想法池 / 进行中 / 已完成 / <span class="arr">收工钩子</span> / 专注计时</span>
+  <span><b>推进台 → To Do</b>：<span class="arr">立项</span> / 置顶 / 起计时 / 划 ✅ / 写回钩子 / 复盘</span>
+  <span><b>一份数据</b>：目标、验收、证据、复盘都挂在 To Do 的卡片上，跟着它加密同步</span>
+</div>
+
+<div class="qbar" id="qbar">
+  <span id="qMsg">未连接时也能写：命令先排队，打开 To Do 后自动生效。</span>
+  <button class="mini" id="helloBtn">重试连接</button>
+</div>
+
+<div class="wrap">
+<div class="grid">
+
+  <!-- 今天这一格 -->
+  <section class="sec hero" style="grid-column:span 1">
+    <h2>今天这一格 <span class="tail" id="heroDay"></span></h2>
+    <div id="hero"></div>
+  </section>
+
+  <!-- 燃料 + 专注 -->
+  <section class="sec">
+    <h2>燃料 <span class="tail">完成感</span></h2>
+    <div class="fuel" id="fuel"></div>
+    <h2 style="margin-top:18px">专注</h2>
+    <div class="focusbox" id="focusBox">还没有计时</div>
+    <h2 style="margin-top:18px">联动流水 <span class="tail">最近 8 条</span></h2>
+    <div class="log" id="log"><div>等待第一条命令…</div></div>
+  </section>
+
+  <!-- 想法池立项 -->
+  <section class="sec">
+    <h2>想法池 → 立项 <span class="n" id="inboxN">0</span></h2>
+    <div id="inboxList"></div>
+    <div class="field" style="margin-top:10px">
+      <label>突然想到什么（直接丢进 To Do 想法池）</label>
+      <input id="newIdea" placeholder="回车添加">
+    </div>
+    <h2 style="margin-top:16px">已完成 · 复盘 <span class="n" id="doneN">0</span></h2>
+    <div id="reviewList"></div>
+  </section>
+</div>
+
+<div class="grid" style="grid-template-columns:1fr">
+  <!-- 日程格 -->
+  <section class="sec">
+    <h2>日程格 <span class="tail">顺序照 To Do「待办」列，不另立一份计划</span></h2>
+    <div id="dayList"></div>
+  </section>
+</div>
+</div>
+
+<div class="foot">
+  推进台不解密、不存任务数据：卡片快照只在同一域名的标签页之间用内存通道传；命令队列会短暂经过本机
+  localStorage，To Do 执行后即清空（可点「清空队列」）。没开 To Do 或它锁着时，命令排队等它解锁。<br>
+  必须和 To Do 在同一个网址下打开（GitHub Pages 同目录，或本地 <code>python -m http.server</code> 同一个端口）；
+  <b>实测直接双击 <code>file://</code> 打开时两页不共享 localStorage、联动不生效</b>，请用本地服务或 GitHub Pages。
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+/* 和 app.js 的联动桥对齐；这里只发命令 / 收快照，绝不覆盖 todo 的数据源 */
+const DCH="todo.drive.v1", PKEY="todo.drive.pending.v1";
+const COLS=["inbox","todo","doing","done"];
+const COLNAME={inbox:"想法池",todo:"待办",doing:"进行中",done:"已完成"};
+const STEPS7=[
+  "① 取证：真包 / 官方 read()·write()（连解析器一起读）⇒ 没有就标「待抓包」，不猜",
+  "② 三问：官方会不会自己做？HTTP 还是 SKT·进图·打赢？要「做完」还是「看见」？",
+  "③ 查现成：手上有什么 + 指针表 + 同类动作已有的入口函数",
+  "④ 登记：功能注册表 / 台账加一行，先表后码",
+  "⑤ 改：协议层优先 → 自动化 → 界面 → 生成表脚本",
+  "⑥ 验：编译 0 错 0 警 → 真启动 → 真机动作 → 对照验收标志",
+  "⑦ 记：台账 3 行（做了什么 / 看到什么 / 日期）+ 提交写「为什么」"
+];
+
+let S={state:null,online:false,locked:false,lastAt:0,pinned:null,log:[],known:{},sig:"",dirty:false,errSeen:{},src:""};
+let Q=readQ();
+let ch=null;
+try{ch=new BroadcastChannel(DCH);}catch(e){}
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("on"),2200)}
+function readQ(){try{return JSON.parse(localStorage.getItem(PKEY)||"[]")}catch(e){return[]}}
+function saveQ(){try{localStorage.setItem(PKEY,JSON.stringify(Q))}catch(e){toast("队列写不进本地存储")}}
+
+/* ---------- 命令：只往队列追加，由 To Do 用既有函数执行 ---------- */
+function cmd(name,p){
+  const m={id:uid(),name,p:p||{},ts:Date.now()};
+  Q.push(m); S.known[m.id]={label:labelOf(m)};
+  saveQ(); paintQ(); hello();
+}
+function cmdBatch(list){
+  list.forEach(x=>{
+    const m={id:uid(),name:x[0],p:x[1]||{},ts:Date.now()};
+    Q.push(m); S.known[m.id]={label:labelOf(m)};
+  });
+  saveQ(); paintQ(); hello();
+}
+function note(ok,text){
+  S.log.unshift({ok,text,t:Date.now()}); S.log=S.log.slice(0,8);
+  $("#log").innerHTML=S.log.map(l=>'<div class="'+(l.ok?"ok":"err")+'">'+(l.ok?"✓":"!")+" "+esc(l.text)+"</div>").join("");
+}
+function watchQueue(){
+  const now=Q.map(m=>m.id), gone=Object.keys(S.known).filter(id=>!now.includes(id));
+  gone.forEach(id=>{const m=S.known[id]; if(m) note(true,m.label+" → To Do 已生效"); delete S.known[id];});
+  Q.forEach(m=>{ if(!S.known[m.id]) S.known[m.id]={label:labelOf(m)}; });
+  Q.filter(m=>m.err).forEach(m=>{
+    const key=m.id+":"+m.err;
+    if(!S.errSeen[key]){S.errSeen[key]=1;note(false,labelOf(m)+" 失败："+m.err);}
+  });
+  paintQ();
+}
+function labelOf(m){
+  const n={move:"挪列",add:"新想法",setNext:"写钩子",setDrive:"写目标/验收/复盘",
+           reorder:"置顶",focus:"起专注"}[m.name]||m.name;
+  return n+(m.p&&m.p.title?"：「"+String(m.p.title).slice(0,12)+"」":"");
+}
+function paintQ(){
+  const n=Q.length;
+  $("#qText").textContent="待同步 "+n;
+  $("#qChip").style.color=n?"var(--danger)":"";
+  const err=Q.filter(m=>m.err).length;
+  $("#qMsg").innerHTML=n
+    ? (err?'<span class="warn">'+esc(err)+" 条命令执行失败（多半是 To Do 还没解锁），留在队列里可重试。</span>"
+          :"有 "+esc(n)+" 条命令排队；打开 / 解锁 To Do 后自动生效。")
+    : "命令已全部同步。没开 To Do 时也能写，会先排队。";
+}
+
+/* ---------- 收快照 ---------- */
+function hello(){ if(ch) ch.postMessage({type:"hello"}); }
+function typing(){
+  const a=document.activeElement;
+  return !!(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")&&a.closest("#hero"));
+}
+if(ch) ch.onmessage=e=>{
+  const m=e.data||{};
+  /* 多个 To Do 标签页时只认第一个来源；它 15 秒不说话才允许换，避免快照来回跳。 */
+  if(m.src && S.src && m.src!==S.src && Date.now()-S.lastAt<15000) return;
+  if(m.type==="state"){
+    if(m.src) S.src=m.src;
+    const sig=m.updatedAt+":"+JSON.stringify(m.items);
+    const changed=sig!==S.sig;
+    S.state=m; S.online=true; S.locked=false; S.lastAt=Date.now(); S.sig=sig;
+    if(changed){ if(typing()) S.dirty=true; else {S.dirty=false;render();} }
+    else { const c=$("#linkChip");c.dataset.s="on";
+           $("#linkText").textContent="已连接 · "+COLS.reduce((n,k)=>n+((S.state.items[k]||[]).length),0)+" 张卡"; }
+    return;
+  }
+  if(m.type==="locked"){ S.locked=true; S.online=false; render(); }
+};
+window.addEventListener("storage",e=>{if(e.key===PKEY){Q=readQ();watchQueue();}});
+document.addEventListener("focusout",()=>setTimeout(()=>{
+  if(S.dirty&&!typing()){S.dirty=false;render();}
+},0));
+setInterval(renderFocus,500);
+setInterval(()=>{
+  const q=readQ();
+  if(JSON.stringify(q)!==JSON.stringify(Q)){Q=q;watchQueue();}
+  if(Date.now()-S.lastAt>6000&&S.online){S.online=false;S.src="";render();}
+  hello();
+},2500);
+
+/* ---------- 数据视图 ---------- */
+function all(){
+  if(!S.state) return [];
+  const out=[];
+  COLS.forEach(c=>(S.state.items[c]||[]).forEach((it,i)=>out.push({it,col:c,i})));
+  return out;
+}
+function byId(id){return all().find(x=>x.it.id===id)}
+function drive(x){return (x&&x.it&&x.it.drive)||{}}
+function localDrive(id,patch){
+  const x=byId(id); if(!x)return;
+  const d=Object.assign({},x.it.drive||{});
+  Object.keys(patch).forEach(k=>{if(patch[k]===null)delete d[k];else d[k]=patch[k]});
+  x.it.drive=d;
+}
+function current(){
+  const doing=all().filter(x=>x.col==="doing");
+  if(S.pinned){const p=byId(S.pinned);if(p&&p.col!=="done")return p;}
+  if(doing.length)return doing[0];
+  const todo=all().filter(x=>x.col==="todo");
+  if(todo.length)return todo[0];
+  const inbox=all().filter(x=>x.col==="inbox");
+  return inbox[0]||null;
+}
+function fmt(ts){if(!ts)return"";const d=new Date(ts);return(d.getMonth()+1)+"/"+d.getDate()}
+function left(){
+  const f=S.state&&S.state.focus;
+  if(!f)return null;
+  const sec=f.status==="run"&&f.endAt?Math.max(0,Math.ceil((f.endAt-Date.now())/1000)):Math.max(0,Math.round(f.left||0));
+  return {sec,f};
+}
+let lastRendered={};   // 各字段上次由快照渲染出的值：用来区分「用户新输入」与「服务器已回写」
+let lastHeroId="";     // 换卡时不准把上一张卡的输入带到新卡
+
+/* 重绘前先收下用户还没来得及 blur 的输入；重绘后若该字段的快照值没变，就把输入还回去。
+   这样即使快照在打字途中到达，也不会把字吞掉；服务器确实回写了新值则尊重服务器。 */
+function captureHero(){
+  const el=$("#hero"), out={};
+  if(!el)return out;
+  el.querySelectorAll("[data-k]").forEach(n=>{out[n.dataset.k]=n.value});
+  return out;
+}
+function restoreHero(cap,heroId){
+  const el=$("#hero"); if(!el||!cap)return;
+  const same=heroId===lastHeroId;
+  el.querySelectorAll("[data-k]").forEach(n=>{
+    const k=n.dataset.k, now=n.value, typed=cap[k];
+    if(same && typed!==undefined && typed!==now && lastRendered[k]===now) n.value=typed;
+    lastRendered[k]=n.value;
+  });
+  lastHeroId=heroId;
+}
+
+/* ---------- 渲染 ---------- */
+function render(){
+  const chip=$("#linkChip"), txt=$("#linkText");
+  if(S.online){chip.dataset.s="on";txt.textContent="已连接 · "+COLS.reduce((n,c)=>n+((S.state.items[c]||[]).length),0)+" 张卡";}
+  else if(S.locked){chip.dataset.s="lock";txt.textContent="To Do 未解锁";}
+  else{chip.dataset.s="off";txt.textContent="等待 To Do…（命令仍可排队）";}
+  const cap=captureHero(), hid=(current()&&current().it.id)||"";
+  renderHero(); renderFuel(); renderInbox(); renderReview(); renderDays(); renderFocus(); paintQ();
+  restoreHero(cap,hid);
+}
+function renderHero(){
+  const el=$("#hero"), x=current();
+  if(!x){
+    $("#heroDay").textContent="";
+    el.innerHTML='<div class="empty">To Do 里还没有卡片，或还没连上。先在下面丢一个想法，或点右上「打开 To Do」。</div>';
+    return;
+  }
+  const d=drive(x), steps=Array.isArray(d.steps)&&d.steps.length?d.steps:STEPS7.map(t=>({t,done:false}));
+  $("#heroDay").textContent=(x.col==="doing"?"进行中":COLNAME[x.col])+" · D"+(x.i+1);
+  let h='';
+  h+='<div class="card" style="border-left:3px solid var(--c-'+(x.col==="inbox"?"inbox":x.col==="todo"?"todo":x.col==="doing"?"doing":"done")+')">'
+    +'<div class="t">'+esc(x.it.title)+'</div>'
+    +'<div class="m"><span class="tag" data-c="'+x.col+'">'+COLNAME[x.col]+'</span> '
+    +(d.accept?'':'<span class="tag warn">验收标志未定</span>')
+    +(x.it.deadline?' <span class="tag">截止 '+esc(x.it.deadline)+'</span>':'')
+    +' · 建于 '+esc(fmt(x.it.createdAt))+'</div></div>';
+  if(x.it.next) h+='<div class="hook"><b>上次停在哪（To Do 的钩子）：</b>'+esc(x.it.next)+'</div>';
+  h+='<div class="two">'
+    +fld("goal","目标（一句话）",d.goal||x.it.title)
+    +fld("accept",'验收标志 <span class="req">*</span>（看到什么算成）',d.accept)
+    +fld("source","依据 / 出处",d.source)
+    +fld("youDo","你的动作（≤15 分钟）",d.youDo)
+    +fld("aiDo","我同时做（取证 / 照抄 / 编译 / 台账）",d.aiDo,"text")
+    +'</div>';
+  h+='<div class="field"><label>目标 → 动作 7 步（勾掉一步，就少想一步）</label><ul class="steps" id="steps">'
+    +steps.map((s,i)=>'<li class="'+(s.done?"done":"")+'"><input type="checkbox" data-step="'+i+'" '+(s.done?"checked":"")+'><span>'+esc(s.t)+'</span></li>').join("")
+    +'</ul></div>';
+  h+='<div class="two">'+fld("stuck","卡在哪（15 分钟没证据就换格）",d.stuck)+fld("review","复盘：看到什么 / 日期",d.review)+'</div>';
+  h+='<div class="btns">'
+    +'<button class="primary" data-act="start">开工 25′</button>'
+    +'<button data-act="focus10">10′</button><button data-act="focus45">45′</button>'
+    +'<button data-act="finish">划 ✅ 完成</button>'
+    +'<button data-act="stuck">卡住 · 写回钩子</button>'
+    +'<button data-act="top">置顶为今天的格</button>'
+    +'</div>';
+  el.innerHTML=h;
+
+  el.querySelectorAll(".field input,.field textarea").forEach(inp=>{
+    inp.addEventListener("blur",()=>{
+      const k=inp.dataset.k, v=inp.value.trim();
+      if(v===(d[k]||""))return;
+      cmd("setDrive",{id:x.it.id,drive:{[k]:v||null}});
+      localDrive(x.it.id,{[k]:v||null});
+      note(true,"保存「"+k+"」→ 排队");
+    });
+  });
+  el.querySelectorAll("[data-step]").forEach(cb=>cb.addEventListener("change",()=>{
+    const arr=steps.map(s=>({t:s.t,done:!!s.done})); arr[+cb.dataset.step].done=cb.checked;
+    cmd("setDrive",{id:x.it.id,drive:{steps:arr}});
+    localDrive(x.it.id,{steps:arr});
+    cb.parentNode.classList.toggle("done",cb.checked);
+  }));
+  el.querySelectorAll("[data-act]").forEach(b=>b.addEventListener("click",()=>{
+    const a=b.dataset.act, id=x.it.id, v=k=>{const n=el.querySelector('[data-k="'+k+'"]');return n?n.value.trim():""};
+    if(a==="start"||a==="focus10"||a==="focus45"){
+      const min=a==="focus10"?10:a==="focus45"?45:25;
+      cmdBatch([["move",{id,col:"doing"}],["focus",{id,min}]]);
+      toast("已排队：移到进行中 + "+min+"′ 专注");
+    }else if(a==="finish"){
+      const ac=v("accept"), rv=v("review");
+      if(!ac){toast("先写验收标志，才知道什么算做完");el.querySelector('[data-k="accept"]').focus();return;}
+      const review=rv||("验收：「"+ac+"」 · "+new Date().toLocaleDateString("zh-CN"));
+      cmdBatch([
+        ["setDrive",{id,drive:{goal:v("goal")||x.it.title,accept:ac,source:v("source"),
+          youDo:v("youDo"),aiDo:v("aiDo"),stuck:v("stuck")||null,review,doneAt:Date.now()}}],
+        ["setNext",{id,text:"完成："+ac.slice(0,40)}],
+        ["move",{id,col:"done"}]
+      ]);
+      S.pinned=null; toast("已排队：复盘 + 划 ✅");
+    }else if(a==="stuck"){
+      const reason=v("stuck")||"没拿到证据";
+      cmdBatch([["setDrive",{id,drive:{stuck:reason}}],["setNext",{id,text:"卡在："+reason.slice(0,40)}]]);
+      const nxt=all().filter(y=>y.col==="todo"&&y.it.id!==id)[0]||all().filter(y=>y.col==="inbox")[0];
+      S.pinned=nxt?nxt.it.id:null; toast("钩子已写回 To Do，换下一格"); render();
+    }else if(a==="top"){
+      cmd("reorder",{id,index:0}); S.pinned=id; toast("已排队：置顶");
+    }
+  }));
+}
+function fld(k,label,v,type){
+  return '<div class="field"><label>'+label+'</label>'
+    +(type==="text"
+      ?'<textarea data-k="'+k+'" rows="2">'+esc(v||"")+'</textarea>'
+      :'<input data-k="'+k+'" value="'+esc(v||"")+'" placeholder="'+esc(k==="accept"?"能自己打到第 8 层并领奖":"")+'">')
+    +'</div>';
+}
+function renderFuel(){
+  const done=(S.state&&S.state.items.done)||[], now=Date.now(), d7=now-7*864e5;
+  const week=done.filter(it=>(it.doneAt||it.updatedAt||0)>=d7).length;
+  const today=done.filter(it=>{const t=it.doneAt||it.updatedAt||0;return new Date(t).toDateString()===new Date().toDateString()}).length;
+  $("#fuel").innerHTML='<div><span class="big">'+week+'</span> <span class="lb">近 7 天完成</span></div>'
+    +'<div><span class="big">'+today+'</span> <span class="lb">今天</span></div>'
+    +'<div><span class="big">'+all().filter(x=>x.col==="inbox").length+'</span> <span class="lb">想法待立项</span></div>';
+}
+function renderFocus(){
+  const l=left();
+  if(!l){$("#focusBox").textContent="还没有计时。点「开工 25′」会在 To Do 里真的起一个计时器。";return}
+  const m=Math.floor(l.sec/60), s=String(l.sec%60).padStart(2,"0");
+  const item=byId(l.f.id), t=item?item.it.title:"（卡片已挪走）";
+  $("#focusBox").innerHTML='<b>'+(l.f.phase==="break"?"休息 ":"")+m+":"+s+'</b> · '+esc(t)
+    +' <span style="color:var(--faint)">('+(l.f.status==="run"?"进行中":"暂停")+')</span>';
+}
+function renderInbox(){
+  const list=all().filter(x=>x.col==="inbox");
+  $("#inboxN").textContent=list.length;
+  $("#inboxList").innerHTML=list.length?list.map(x=>
+    '<div class="card"><div class="t">'+esc(x.it.title)+'</div><div class="m">'+esc(fmt(x.it.createdAt))+'</div>'
+    +'<div class="row"><button class="mini go" data-id="'+esc(x.it.id)+'" data-a="promote">立项 → 待办</button>'
+    +'<button class="mini" data-id="'+esc(x.it.id)+'" data-a="direct">直接开工</button></div></div>').join("")
+    :'<div class="empty">想法池是空的。想到什么就先丢进来，不必想清楚。</div>';
+  $("#inboxList").querySelectorAll("[data-a]").forEach(b=>b.addEventListener("click",()=>{
+    const id=b.dataset.id;
+    if(b.dataset.a==="promote"){
+      cmdBatch([
+        ["setDrive",{id,drive:{goal:titleOf(id),accept:"",source:"",youDo:"",aiDo:"",
+          steps:STEPS7.map(t=>({t,done:false})),stuck:null,review:""}}],
+        ["setNext",{id,text:"第一动作："+STEPS7[0].replace(/^① /,"").slice(0,40)}],
+        ["move",{id,col:"todo"}]
+      ]);
+      S.pinned=id; toast("已立项：7 步骨架 + 第一动作写回 To Do 钩子");
+    }else{
+      cmdBatch([["move",{id,col:"doing"}],["focus",{id,min:25}]]);
+      S.pinned=id; toast("已排队：直接开工");
+    }
+  }));
+}
+function titleOf(id){const x=byId(id);return x?x.it.title:""}
+function renderReview(){
+  const list=((S.state&&S.state.items.done)||[]).slice().reverse().slice(0,8);
+  $("#doneN").textContent=(S.state&&S.state.items.done||[]).length;
+  $("#reviewList").innerHTML=list.length?list.map(it=>{
+    const d=it.drive||{};
+    return '<div class="card"><div class="t">'+esc(it.title)+'</div>'
+      +'<div class="m">'+esc(fmt(it.doneAt||it.updatedAt))+(d.accept?' · 验收：'+esc(d.accept):'')+'</div>'
+      +(d.review?'<div class="m" style="color:var(--muted)">'+esc(d.review)+'</div>':'<div class="m">没写复盘</div>')
+      +'</div>';
+  }).join(""):'<div class="empty">还没有完成项。</div>';
+}
+function renderDays(){
+  const list=all().filter(x=>x.col==="todo"||x.col==="doing");
+  $("#dayList").innerHTML=list.length?list.map((x,i)=>{
+    const d=drive(x);
+    return '<div class="card"><div class="t">D'+(i+1)+' · '+esc(x.it.title)+'</div>'
+      +'<div class="m"><span class="tag" data-c="'+x.col+'">'+COLNAME[x.col]+'</span> '
+      +(d.accept?'验收：'+esc(d.accept):'<span class="tag warn">验收未定</span>')
+      +(x.it.next?' · 钩子：'+esc(x.it.next):'')+'</div>'
+      +'<div class="row"><button class="mini" data-id="'+esc(x.it.id)+'" data-a="pick">设为今天这一格</button>'
+      +'<button class="mini" data-id="'+esc(x.it.id)+'" data-a="top">置顶</button></div></div>';
+  }).join(""):'<div class="empty">「待办」列是空的。从想法池立项，它就会出现在这一格。</div>';
+  $("#dayList").querySelectorAll("[data-a]").forEach(b=>b.addEventListener("click",()=>{
+    if(b.dataset.a==="pick"){S.pinned=b.dataset.id;render();toast("已设为今天这一格");}
+    else cmd("reorder",{id:b.dataset.id,index:0});
+  }));
+}
+
+/* ---------- 顶栏 ---------- */
+$("#clearQ").addEventListener("click",()=>{
+  if(!Q.length){toast("队列是空的");return}
+  Q=[];saveQ();S.known={};watchQueue();toast("已清空待同步命令");
+});
+$("#helloBtn").addEventListener("click",()=>{hello();toast("已向 To Do 打招呼")});
+$("#newIdea").addEventListener("keydown",e=>{
+  if(e.isComposing)return;
+  if(e.key==="Enter"){
+    const v=e.target.value.trim(); if(!v)return;
+    cmd("add",{title:v,col:"inbox"}); e.target.value=""; toast("已排队：丢进想法池");
+  }
+});
+$("#openTodo").addEventListener("click",()=>setTimeout(hello,900));
+
+Q.forEach(m=>{S.known[m.id]={label:labelOf(m)}});
+paintQ(); render(); hello();
+})();
+</script>
+</body>
+</html>
