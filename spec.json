@@ -1,0 +1,22 @@
+{
+  "schema": "spec/v2",
+  "activeId": "p_main",
+  "projects": [
+    {
+      "id": "p_main",
+      "project": {
+        "title": "",
+        "vision": "",
+        "nonGoals": [],
+        "schedule": { "slots": [], "autoBudget": true, "budgetMin": 120, "restDays": [] }
+      },
+      "modules": [],
+      "raw": [],
+      "reqs": [],
+      "questions": [],
+      "pending": [],
+      "cards": [],
+      "meta": { "updatedAt": 0 }
+    }
+  ]
+}

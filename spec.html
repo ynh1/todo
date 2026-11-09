@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f4f0">
+<title>需求台 · 先说清要做什么</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%232f6f5f'/><path d='M26 34h48M26 50h34M26 66h22' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>">
+<style>
+:root{
+  --bg:#f5f4f0; --panel:#fff; --line:#e5e2db; --line-strong:#d6d2c9;
+  --text:#201f1d; --muted:#8d877c; --faint:#b3ada2; --accent:#2f6f5f;
+  --danger:#c0503f; --warn:#d98c2b; --ok:#4a9b6e;
+  --shadow:0 1px 2px rgba(30,28,25,.05),0 4px 14px rgba(30,28,25,.05);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);display:flex;flex-direction:column;
+  font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:13.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+
+.shell{flex:1 1 auto;display:flex;min-height:0}
+.side{width:190px;flex:0 0 auto;background:var(--panel);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding:12px 10px 10px;overflow:auto}
+.sbtop{display:flex;align-items:center;justify-content:space-between;font-size:11px;
+  color:var(--muted);letter-spacing:.04em;margin-bottom:8px;padding:0 4px}
+.sbn{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:#fff;
+  font-size:14px;line-height:1;padding:0;color:var(--accent)}
+.sbn:hover{border-color:var(--accent);background:#fbfaf7}
+.pitem{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:8px;cursor:pointer;
+  font-size:12.5px;border:1px solid transparent;margin-bottom:2px}
+.pitem:hover{background:#fbfaf7;border-color:var(--line)}
+.pitem.on{background:rgba(47,111,95,.09);border-color:#cfe3da;color:var(--accent);font-weight:600}
+.pitem .pn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pitem .pc{font-size:10px;color:var(--faint);background:#ebe9e3;border-radius:20px;padding:0 6px}
+.pitem.on .pc{color:var(--accent);background:#dcece6}
+.pitem .px{opacity:0;border:0;background:transparent;color:var(--faint);font-size:14px;
+  padding:0 2px;line-height:1}
+.pitem:hover .px{opacity:1}
+.pitem .px:hover{color:var(--danger)}
+.sbfoot{margin-top:auto;padding:10px 4px 0;font-size:10.5px;color:var(--faint);line-height:1.7}
+.work{flex:1 1 auto;display:flex;flex-direction:column;min-width:0}
+@media(max-width:820px){
+  .shell{flex-direction:column}
+  .side{width:auto;border-right:0;border-bottom:1px solid var(--line);flex-direction:row;
+    align-items:center;gap:8px;padding:8px 12px;overflow-x:auto}
+  .sbtop{margin:0}.sbfoot{display:none}#projList{display:flex;gap:6px}
+}
+
+.top{display:flex;align-items:center;gap:8px;padding:12px 18px 8px;flex-wrap:wrap}
+.brand{font-size:15px;font-weight:650;display:flex;align-items:center;gap:8px}
+.brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(47,111,95,.12)}
+.spacer{flex:1 1 auto}
+#pTitle,#pVision{border:1px solid transparent;background:transparent;border-radius:7px;padding:5px 8px;outline:0}
+#pTitle{font-weight:650;width:180px}
+#pVision{width:340px;color:var(--muted);font-size:12.5px}
+#pTitle:hover,#pVision:hover{border-color:var(--line)}
+#pTitle:focus,#pVision:focus{border-color:var(--accent);background:var(--panel)}
+.iconbtn{height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel);
+  color:var(--text);display:inline-flex;align-items:center;font-size:12.5px;text-decoration:none;cursor:pointer}
+.iconbtn:hover{border-color:var(--line-strong);background:#fbfaf7}
+.iconbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+
+.meta{display:flex;gap:16px;align-items:center;padding:0 18px 10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.meta label{display:flex;align-items:center;gap:7px}
+.meta input{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:4px 8px;outline:0;color:var(--text)}
+.meta input:focus{border-color:var(--accent)}
+#pNon{width:300px} #pBudget{width:64px}
+.hint{color:var(--faint);font-size:11.5px}
+.slots{position:relative}
+.pickbtn{height:28px;padding:0 11px;border:1px solid var(--line);background:var(--panel);
+  border-radius:8px;color:var(--text);font-size:12px;max-width:340px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.pickbtn.on{border-color:var(--accent);color:var(--accent)}
+.pop{position:absolute;top:34px;left:0;z-index:15;width:308px;background:var(--panel);
+  border:1px solid var(--line-strong);border-radius:10px;
+  box-shadow:0 10px 30px rgba(30,28,25,.14);padding:10px 12px 11px}
+.pop[hidden]{display:none}
+.poph{font-size:11px;color:var(--muted);margin-bottom:7px}
+.hours{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-bottom:8px;touch-action:none}
+.h{height:26px;border:1px solid var(--line);border-radius:6px;background:#fff;
+  font-size:10.5px;padding:0;color:var(--muted);font-variant-numeric:tabular-nums;user-select:none}
+.h:hover{border-color:var(--line-strong)}
+.h.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+main{flex:1 1 auto;display:grid;grid-template-columns:275px minmax(0,1fr) 330px;gap:12px;
+  padding:0 18px 12px;min-height:0}
+@media(max-width:1100px){main{grid-template-columns:1fr 1fr}#colAi{grid-column:1/-1}}
+@media(max-width:760px){main{grid-template-columns:1fr;overflow:auto}#colAi{grid-column:auto}}
+
+.col{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);
+  padding:12px 13px;overflow:auto;min-height:0;min-width:0}
+.col>h2{margin:0 0 9px;font-size:12px;font-weight:650;letter-spacing:.04em;color:#55514a;
+  display:flex;align-items:center;gap:7px;position:sticky;top:0;background:var(--panel);padding:2px 0 6px;z-index:2}
+.col>h2 .n{font-size:10.5px;color:var(--faint);background:#ebe9e3;border-radius:20px;padding:1px 7px;
+  font-variant-numeric:tabular-nums}
+.col>h2 .tail{margin-left:auto;font-weight:400;color:var(--faint);font-size:11px}
+h2+.col>h2{margin-top:14px}
+
+textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fff;
+  outline:0;resize:vertical;font-size:13px}
+textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,111,95,.07)}
+.hintline{font-size:11px;color:var(--faint);margin:5px 0 9px}
+
+.raw{border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin-bottom:6px;background:#fdfdfc}
+.raw .t{font-size:12.5px;overflow-wrap:anywhere}
+.raw .m{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:10.5px;color:var(--faint)}
+.raw .m .sp{flex:1}
+.raw .m .to{color:var(--accent);font-size:10.5px}
+.raw .imgs{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.raw .imgs img{width:66px;height:46px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:zoom-in;background:#f0eee8}
+.tray{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.tray .th{position:relative}
+.tray img{width:74px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:#f0eee8}
+.tray .x{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:0;
+  background:var(--text);color:var(--bg);font-size:11px;line-height:18px;padding:0}
+#colRaw.drag{outline:2px dashed var(--accent);outline-offset:-7px}
+.rb .imgs{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.rb .imgs img{width:66px;height:46px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:zoom-in;background:#f0eee8}
+#lightbox{position:fixed;inset:0;background:rgba(20,19,17,.84);display:none;align-items:center;
+  justify-content:center;z-index:30;padding:24px}
+#lightbox.on{display:flex}
+#lightbox img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 10px 44px rgba(0,0,0,.5)}
+
+.addmod{display:flex;gap:6px;margin-bottom:9px}
+.addmod input{flex:1;border:1px solid var(--line);border-radius:7px;padding:5px 8px;outline:0}
+.addmod input:focus{border-color:var(--accent)}
+
+.grp{margin-bottom:12px}
+.grp>h3{margin:0 0 6px;font-size:12px;font-weight:650;color:#55514a;display:flex;gap:7px;align-items:center}
+.grp>h3 .n{font-size:10px;color:var(--faint);background:#ebe9e3;border-radius:20px;padding:0 6px}
+
+.req{border:1px solid var(--line);border-radius:9px;margin-bottom:6px;background:#fdfdfc}
+.req.open{border-color:var(--line-strong);box-shadow:var(--shadow)}
+.rh{display:flex;align-items:center;gap:7px;padding:6px 8px}
+.rh .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:var(--faint)}
+.s-draft{background:var(--faint)} .s-spec{background:var(--warn)}
+.s-dispatched{background:var(--accent)} .s-done{background:var(--ok)} .s-dropped{background:var(--danger);opacity:.5}
+.rh .rt{flex:1;min-width:0;border:1px solid transparent;background:transparent;border-radius:6px;padding:3px 5px;outline:0;font-size:12.5px;font-weight:550}
+.rh .rt:focus{border-color:var(--accent);background:#fff}
+.rh .rt:not(:focus):hover{border-color:var(--line)}
+.rh .badge{font-size:10px;color:var(--muted);background:#ebe9e3;border-radius:20px;padding:1px 7px;white-space:nowrap}
+.rh .est{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+.rb{padding:2px 10px 10px;border-top:1px dashed var(--line)}
+.rb label{display:block;font-size:11px;color:var(--muted);margin:8px 0 0}
+.rb label input,.rb label textarea,.rb label select{display:block;width:100%;margin-top:3px;
+  border:1px solid var(--line);border-radius:7px;padding:5px 8px;background:#fff;outline:0;font-size:12.5px;
+  color:var(--text);resize:vertical}
+.rb label input:focus,.rb label textarea:focus,.rb label select:focus{border-color:var(--accent)}
+.two{display:grid;grid-template-columns:96px 1fr;gap:8px}
+.rbtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+
+.mini{height:25px;padding:0 9px;border-radius:7px;border:1px solid var(--line);background:#fff;font-size:11.5px}
+.mini:hover{border-color:var(--line-strong);background:#fbfaf7}
+.mini.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.mini.go:hover{background:#27604f}
+.mini.warn{color:var(--danger);border-color:#eccfc9}
+
+.qs{margin-top:9px;border-top:1px dashed var(--line);padding-top:6px}
+.q{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;padding:3px 0}
+.q .ans{color:var(--accent)}
+
+.pend{border:1px solid var(--warn);background:#fdf6ea;border-radius:8px;padding:8px 9px;margin-bottom:6px;font-size:12px}
+.pend .m{font-size:10.5px;color:#9a7a3f;margin-top:3px}
+.pend .row{display:flex;gap:6px;margin-top:6px}
+
+.plan{padding:4px 0 8px}
+.plan .day{font-size:11px;color:var(--muted);margin:6px 0 4px;display:flex;justify-content:space-between}
+.card{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:5px;background:#fdfdfc}
+.card .t{font-size:12.5px;overflow-wrap:anywhere}
+.card .m{font-size:10.5px;color:var(--faint);margin-top:2px}
+.card .row{display:flex;gap:6px;margin-top:6px}
+.card input.ev{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:3px 7px;font-size:11.5px;outline:0}
+.card input.ev:focus{border-color:var(--accent)}
+
+#opsIn{font-size:11.5px;font-family:ui-monospace,Consolas,monospace}
+.row{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+
+.harvest{flex:0 0 auto;margin:0 18px 14px;padding:10px 14px;background:var(--panel);
+  border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:168px;overflow:auto}
+.harvest h2{margin:0 0 7px;font-size:12px;font-weight:650;letter-spacing:.04em;color:#55514a;
+  display:flex;gap:8px;align-items:center}
+.harvest h2 .tail{margin-left:auto;font-weight:400;color:var(--faint);font-size:11px}
+.hv{display:inline-block;vertical-align:top;width:calc(33.33% - 8px);margin:0 8px 8px 0;
+  border:1px solid var(--line);border-radius:8px;padding:6px 9px;background:#fdfdfc}
+@media(max-width:900px){.hv{width:calc(50% - 8px)}}
+@media(max-width:600px){.hv{width:100%}}
+.hv .t{font-size:12px;font-weight:600}
+.hv .m{font-size:10.5px;color:var(--muted);margin-top:2px}
+
+.empty{color:var(--faint);font-size:12px;padding:8px 2px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#201f1d;color:#fff;
+  padding:7px 15px;border-radius:20px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="shell">
+<aside class="side">
+  <div class="sbtop"><span>项目</span><button class="sbn" id="newProj" title="新建项目">＋</button></div>
+  <div id="projList"></div>
+  <div class="sbfoot">每个项目独立<br>看板只有一个</div>
+</aside>
+<div class="work">
+
+<header class="top">
+  <div class="brand"><span class="dot"></span>需求台</div>
+  <input id="pTitle" placeholder="项目名">
+  <input id="pVision" placeholder="愿景：做完之后，什么变得可能">
+  <div class="spacer"></div>
+  <button class="iconbtn" id="pullFile" title="从仓库的 spec.json 重新载入（AI 改完文件后用）">从文件载入</button>
+  <button class="iconbtn" id="copySpec" title="复制整份 spec.json，贴给 AI">复制 spec.json</button>
+  <button class="iconbtn" id="exportSpec">导出</button>
+  <button class="iconbtn" id="exportMedia" title="把图片一起内嵌进 JSON（文件会大），发给 AI 用">导出含图</button>
+  <label class="iconbtn">导入<input type="file" id="importFile" accept=".json" hidden></label>
+  <a class="iconbtn primary" href="index.html">看板 ↗</a>
+</header>
+
+<div class="meta">
+  <label>不做清单 <input id="pNon" placeholder="逗号分隔；明确不做的功能"></label>
+  <div class="slots">
+    <button class="pickbtn" id="slotBtn" aria-haspopup="true">选可用时段 ▾</button>
+    <div class="pop" id="slotPop" hidden>
+      <div class="poph">一天里哪些小时可用 · 按住拖过一片，想勾几个勾几个</div>
+      <div class="hours" id="hours"></div>
+      <div class="row">
+        <button class="mini" data-q="none">清空</button>
+        <button class="mini" data-q="all">全选</button>
+        <button class="mini" data-q="eve">晚上 19–24</button>
+        <button class="mini" data-q="day">白天 9–18</button>
+      </div>
+      <div class="poph" style="margin:7px 0 0">预算按勾选小时自动算，也可以手改</div>
+    </div>
+  </div>
+  <label>预算 <input id="pBudget" type="number" min="15" step="15"> 分钟</label>
+  <span class="hint" id="metaHint"></span>
+</div>
+
+<main>
+  <section class="col" id="colRaw">
+    <h2>吐露 <span class="n" id="rawN">0</span><span class="tail">一句就行</span></h2>
+    <textarea id="rawIn" rows="3" placeholder="想到什么就说什么，不要求分类。Ctrl+Enter 存下；截图可直接 Ctrl+V 或拖进来。"></textarea>
+    <div class="tray" id="tray"></div>
+    <div class="hintline" id="pasteHint">截图直接 <b>Ctrl+V</b> 贴到这儿，也能把图片拖进左栏。可配一句话，也可只有图。</div>
+    <div class="hintline">存下后点「→ 需求」，它就不会丢。</div>
+    <div id="rawList"></div>
+  </section>
+
+  <section class="col" id="colReq">
+    <h2>需求树 <span class="n" id="reqN">0</span><span class="tail">只细化到说清的那一层</span></h2>
+    <div class="addmod"><input id="modIn" placeholder="加一个模块，如：日常 / 同步 / 界面"><button class="mini" id="modAdd">＋</button></div>
+    <div id="reqList"></div>
+  </section>
+
+  <section class="col" id="colAi">
+    <h2>待审 <span class="n" id="pendN">0</span><span class="tail">AI 写的，你点接受才生效</span></h2>
+    <div id="pendingList"></div>
+    <h2>待答问题 <span class="tail" id="qHint"></span></h2>
+    <div id="qList"></div>
+    <h2>时间块分配 <span class="tail" id="planHint"></span></h2>
+    <div id="planList"></div>
+    <h2>AI 回写</h2>
+    <textarea id="opsIn" rows="4" placeholder='粘贴 AI 的 {"ops":[...]}，只会进待审区'></textarea>
+    <div class="row"><button class="mini" id="opsAdd">放进待审</button><button class="mini" id="copyTodo">复制待办标题</button></div>
+  </section>
+</main>
+
+<section class="harvest">
+  <h2>收获库 <span class="tail" id="hvHint"></span></h2>
+  <div id="hvList"></div>
+</section>
+
+</div>
+</div>
+
+<div id="lightbox"><img id="lbImg" alt=""></div>
+<div id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+const K = "spec.v1";
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = p => (p||"x") + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const now = () => Date.now();
+const fmt = ts => { if(!ts) return ""; const d = new Date(ts);
+  return (d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("on");
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("on"),2400); }
+
+function blankProject(title){
+  return {
+    id: uid("p"),
+    project: { title: title || "", vision: "", nonGoals: [],
+      schedule: { slots: [], autoBudget: true, budgetMin: 120, restDays: [] } },
+    modules: [], raw: [], reqs: [], questions: [], pending: [], cards: [],
+    meta: { updatedAt: 0 }
+  };
+}
+function normalizeProject(d){
+  const b = blankProject(), o = Object.assign(b, d || {});
+  o.project = Object.assign(b.project, o.project || {});
+  o.project.schedule = Object.assign(b.project.schedule, (o.project || {}).schedule || {});
+  const sc = o.project.schedule;
+  if(!Array.isArray(sc.slots)) sc.slots = parseWindow(sc.window);
+  if(sc.autoBudget === undefined) sc.autoBudget = true;
+  if(!Array.isArray(o.project.nonGoals)) o.project.nonGoals = [];
+  ["modules","raw","reqs","questions","pending","cards"].forEach(k => { if(!Array.isArray(o[k])) o[k] = []; });
+  ["raw","reqs"].forEach(k => o[k].forEach(x => { if(!Array.isArray(x.images)) x.images = []; }));
+  o.meta = Object.assign(b.meta, o.meta || {});
+  if(!o.id) o.id = b.id;
+  return o;
+}
+function normalizeRoot(d){
+  d = d || {};
+  let list = Array.isArray(d.projects) ? d.projects : null;
+  if(!list){
+    if(d.project || d.reqs || d.raw || d.cards) list = [Object.assign({}, d, { id: d.id || "p_main" })];
+    else list = [];
+  }
+  const projects = list.map(normalizeProject);
+  if(!projects.length) projects.push(blankProject("第一个项目"));
+  const activeId = projects.some(p => p.id === d.activeId) ? d.activeId : projects[0].id;
+  return { schema: "spec/v2", activeId: activeId, projects: projects };
+}
+
+let ROOT = normalizeRoot(null);
+let D = ROOT.projects[0];
+const OPEN = new Set();              // 展开详情的需求 id
+
+function useProject(id){
+  const p = ROOT.projects.find(x => x.id === id) || ROOT.projects[0];
+  ROOT.activeId = p.id; D = p; OPEN.clear();
+  return p;
+}
+function switchProject(id){
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  useProject(id); TRAY = [];
+  save(); render();
+}
+function newProject(){
+  const p = blankProject("新项目");
+  ROOT.projects.push(p);
+  switchProject(p.id);
+  setTimeout(() => { const el = $("#pTitle"); if(el){ el.focus(); el.select(); } }, 40);
+}
+function deleteProject(id){
+  if(ROOT.projects.length <= 1){ toast("至少留一个项目"); return; }
+  const p = ROOT.projects.find(x => x.id === id);
+  if(!confirm("删除「" + ((p && p.project.title) || "未命名") + "」？里面的需求会一起没。")) return;
+  if(p){
+    (p.raw || []).concat(p.reqs || []).forEach(x => (x.images || []).forEach(im => {
+      IDB.del(im.id); URLS.delete(im.id);
+    }));
+  }
+  ROOT.projects = ROOT.projects.filter(x => x.id !== id);
+  if(ROOT.activeId === id) ROOT.activeId = ROOT.projects[0].id;
+  useProject(ROOT.activeId); save(); render();
+}
+function loadLocal(){ try{ const s = localStorage.getItem(K); if(s) return normalizeRoot(JSON.parse(s)); }catch(e){} return null; }
+function save(){
+  D.meta.updatedAt = now();
+  ROOT.activeId = D.id;
+  try{ localStorage.setItem(K, JSON.stringify(ROOT)); }
+  catch(e){ toast("本地存储写不进（隐私模式？）先点「导出」留一份"); }
+}
+
+/* ---------------- 图片：原图存 IndexedDB，spec.json 只留元数据 ---------------- */
+const IDB = (() => {
+  let p = null;
+  const open = () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open("spec-media", 1);
+    r.onupgradeneeded = () => { const db = r.result; if(!db.objectStoreNames.contains("img")) db.createObjectStore("img"); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  }));
+  return {
+    async put(id, blob){ const db = await open(); return new Promise((res,rej)=>{
+      const t = db.transaction("img","readwrite"); t.objectStore("img").put(blob,id);
+      t.oncomplete = () => res(id); t.onerror = () => rej(t.error); }); },
+    async get(id){ const db = await open(); return new Promise((res,rej)=>{
+      const q = db.transaction("img","readonly").objectStore("img").get(id);
+      q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
+    async del(id){ const db = await open(); return new Promise((res,rej)=>{
+      const t = db.transaction("img","readwrite"); t.objectStore("img").delete(id);
+      t.oncomplete = () => res(1); t.onerror = () => rej(t.error); }); }
+  };
+})();
+const URLS = new Map();          // img id → objectURL，避免每次重绘都新建
+let TRAY = [];                   // 还没提交的图片
+const MAXSIDE = 1600;
+
+async function shrink(file){
+  const bmp = await createImageBitmap(file);
+  const s = Math.min(1, MAXSIDE / Math.max(bmp.width, bmp.height));
+  const w = Math.max(1, Math.round(bmp.width * s)), h = Math.max(1, Math.round(bmp.height * s));
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  c.getContext("2d").drawImage(bmp, 0, 0, w, h);
+  const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.82));
+  if(bmp.close) bmp.close();
+  return { blob: blob, w: w, h: h };
+}
+
+async function addFiles(files){
+  const arr = Array.from(files || []).filter(f => f && /^image\//.test(f.type));
+  if(!arr.length) return;
+  for(const f of arr){
+    try{
+      const r = await shrink(f);
+      const id = uid("i");
+      await IDB.put(id, r.blob);
+      TRAY.push({ id: id, name: f.name || "粘贴的图", w: r.w, h: r.h });
+    }catch(e){ toast("这张读不了：" + (f.name || "剪贴板图片")); }
+  }
+  renderTray();
+}
+
+async function srcFor(id){
+  if(URLS.has(id)) return URLS.get(id);
+  try{ const b = await IDB.get(id); if(!b) return ""; const u = URL.createObjectURL(b); URLS.set(id, u); return u; }
+  catch(e){ return ""; }
+}
+function paintImgs(root){
+  root.querySelectorAll("img[data-img]").forEach(async el => {
+    if(el.src) return;
+    const u = await srcFor(el.dataset.img);
+    if(u) el.src = u;
+  });
+}
+function imgsHTML(images){
+  if(!images || !images.length) return "";
+  return '<div class="imgs">' + images.map(im =>
+    '<img data-img="'+im.id+'" data-a="zoom" data-id="'+im.id+'" alt="'+esc(im.name||"")+'" title="'+esc(im.name||"")+'">'
+  ).join("") + '</div>';
+}
+function renderTray(){
+  const box = $("#tray");
+  box.innerHTML = TRAY.map(x =>
+    '<span class="th"><img data-img="'+x.id+'" alt="'+esc(x.name)+'">'
+    + '<button class="x" data-a="trayDel" data-id="'+x.id+'">×</button></span>').join("");
+  paintImgs(box);
+  $("#rawIn").placeholder = TRAY.length
+    ? "补一句说明（不填也行），Ctrl+Enter 存下"
+    : "想到什么就说什么，不要求分类。Ctrl+Enter 存下；截图 Ctrl+V 直接贴。";
+}
+async function openLightbox(id){
+  const u = await srcFor(id);
+  if(!u) return;
+  $("#lbImg").src = u;
+  $("#lightbox").classList.add("on");
+}
+
+const reqById = id => D.reqs.find(q => q.id === id);
+const modById = id => D.modules.find(m => m.id === id);
+const modName = id => { const m = modById(id); return m ? m.title : "未分类"; };
+
+/* ---------------- 渲染 ---------------- */
+
+const pad2 = n => String(n).padStart(2, "0");
+function parseWindow(w){
+  const out = [];
+  String(w || "").replace(/(\d{1,2})\s*(?:[:：]\s*\d{1,2})?\s*[-–—~～至到]\s*(\d{1,2})/g, (m, a, b) => {
+    let s = +a, e = +b; if(e <= s) e = 24;
+    for(let h = s; h < e; h++) out.push(((h % 24) + 24) % 24);
+    return "";
+  });
+  return Array.from(new Set(out)).sort((x, y) => x - y);
+}
+function slots(){ return D.project.schedule.slots || []; }
+function slotText(){
+  const s = slots().slice().sort((a, b) => a - b);
+  if(!s.length) return "";
+  const parts = []; let a = s[0], b = s[0];
+  for(let i = 1; i < s.length; i++){
+    if(s[i] === b + 1){ b = s[i]; continue; }
+    parts.push(a === b ? pad2(a) + ":00" : pad2(a) + "–" + pad2(b + 1) + ":00");
+    a = b = s[i];
+  }
+  parts.push(a === b ? pad2(a) + ":00" : pad2(a) + "–" + pad2(b + 1) + ":00");
+  return parts.join("、");
+}
+function renderSlots(){
+  const btn = $("#slotBtn");
+  if(!btn) return;
+  const t = slotText();
+  btn.textContent = t ? t + " ▾" : "选可用时段 ▾";
+  btn.classList.toggle("on", !!t);
+}
+function renderHours(){
+  const box = $("#hours");
+  if(!box) return;
+  const set = new Set(slots());
+  let h = "";
+  for(let i = 0; i < 24; i++)
+    h += '<button class="h' + (set.has(i) ? " on" : "") + '" data-h="' + i + '">' + pad2(i) + "</button>";
+  box.innerHTML = h;
+}
+let dragging = null, liveSlots = null;
+function applyHour(h, on){
+  if(!liveSlots) liveSlots = new Set(slots());
+  if(on) liveSlots.add(h); else liveSlots.delete(h);
+  const b = document.querySelector('#hours [data-h="' + h + '"]');
+  if(b) b.classList.toggle("on", on);
+}
+function budgetFromSlots(){
+  if(D.project.schedule.autoBudget === false) return;
+  const n = slots().length;
+  if(!n) return;
+  D.project.schedule.budgetMin = Math.max(15, n * 60);
+}
+function finishSlots(){
+  if(!liveSlots) return;
+  D.project.schedule.slots = Array.from(liveSlots).sort((a, b) => a - b);
+  liveSlots = null;
+  budgetFromSlots(); save(); renderSlots();
+  if(document.activeElement !== $("#pBudget")) $("#pBudget").value = D.project.schedule.budgetMin;
+}
+function setSlots(arr){
+  D.project.schedule.slots = Array.from(new Set(arr)).sort((a, b) => a - b);
+  budgetFromSlots(); save(); renderSlots(); renderHours();
+  if(document.activeElement !== $("#pBudget")) $("#pBudget").value = D.project.schedule.budgetMin;
+}
+
+function syncHeader(){
+  const a = document.activeElement;
+  if(a !== $("#pTitle"))  $("#pTitle").value  = D.project.title || "";
+  if(a !== $("#pVision")) $("#pVision").value = D.project.vision || "";
+  if(a !== $("#pNon"))    $("#pNon").value    = (D.project.nonGoals || []).join("，");
+  if(a !== $("#pBudget")) $("#pBudget").value = D.project.schedule.budgetMin || 120;
+  renderSlots();
+}
+
+function renderRaw(){
+  const list = D.raw.slice().reverse();
+  $("#rawN").textContent = D.raw.length;
+  const box = $("#rawList");
+  if(!list.length){ box.innerHTML = '<div class="empty">还没有原料。说第一句。</div>'; return; }
+  box.innerHTML = list.map(r => {
+    const q = r.reqId ? reqById(r.reqId) : null;
+    const t = (r.text || "").trim() || (r.images && r.images.length ? "（只看图）" : "");
+    return '<div class="raw" data-id="'+r.id+'"><div class="t">'+esc(t)+'</div>'
+      + imgsHTML(r.images)
+      +'<div class="m"><span>'+fmt(r.at)+'</span>'
+      +(r.images && r.images.length ? '<span>· '+r.images.length+' 图</span>' : '')
+      +'<span class="sp"></span>'
+      +(q ? '<span class="to">→ 已提升</span>'
+          : '<button class="mini" data-a="promote" data-id="'+r.id+'">→ 需求</button>')
+      +'<button class="mini" data-a="rawDel" data-id="'+r.id+'">删</button></div></div>';
+  }).join("");
+  paintImgs(box);
+}
+
+function fld(k, label, v, area){
+  return '<label>'+label+(area
+    ? '<textarea rows="2" data-k="'+k+'">'+esc(v||"")+'</textarea>'
+    : '<input data-k="'+k+'" value="'+esc(v||"")+'">')+'</label>';
+}
+
+function qlist(q){
+  const qs = D.questions.filter(x => x.reqId === q.id);
+  if(!qs.length) return "";
+  return '<div class="qs">' + qs.map(x => {
+    const opts = (x.options||[]).map(o => '<button class="mini" data-a="ans" data-q="'+x.id+'" data-v="'+esc(o)+'">'+esc(o)+'</button>').join("");
+    return '<div class="q"><span>'+esc(x.text)+'</span>'
+      + (x.answer ? '<b class="ans">'+esc(x.answer)+'</b>' : opts) + '</div>';
+  }).join("") + '</div>';
+}
+
+function reqCard(q){
+  const open = OPEN.has(q.id);
+  const st = {draft:"草稿",spec:"已定",dispatched:"已派发",done:"已实现",dropped:"不做"}[q.status] || q.status;
+  let h = '<div class="req'+(open?" open":"")+'" data-id="'+q.id+'">'
+    + '<div class="rh"><span class="dot s-'+q.status+'"></span>'
+    + '<input class="rt" data-k="title" value="'+esc(q.title)+'">'
+    + '<span class="badge">'+st+'</span>'
+    + '<span class="est">'+(q.estMin||25)+'′</span>'
+    + '<button class="mini" data-a="body" data-id="'+q.id+'">'+(open?"收起":"详情")+'</button></div>';
+  if(open){
+    h += '<div class="rb">'
+      + fld("trigger","触发条件（什么时候会发生）", q.trigger)
+      + fld("behavior","行为（做什么）", q.behavior, true)
+      + fld("accept","验收（能观察到什么，就算完成）", q.accept)
+      + '<div class="two">'
+      + '<label>估时（分）<input type="number" min="5" step="5" data-k="estMin" value="'+(q.estMin||25)+'"></label>'
+      + '<label>模块<select data-k="moduleId">'
+      + D.modules.map(m => '<option value="'+m.id+'"'+(m.id===q.moduleId?" selected":"")+'>'+esc(m.title)+'</option>').join("")
+      + '<option value=""'+(q.moduleId?"":" selected")+'>未分类</option></select></label>'
+      + '</div>'
+      + qlist(q)
+      + imgsHTML(q.images)
+      + '<div class="rbtns">'
+      + '<button class="mini go" data-a="spec" data-id="'+q.id+'">标记已定</button>'
+      + '<button class="mini go" data-a="dispatch" data-id="'+q.id+'">派发到待办</button>'
+      + '<button class="mini" data-a="ask" data-id="'+q.id+'">＋ 问题</button>'
+      + '<button class="mini warn" data-a="drop" data-id="'+q.id+'">降为不做</button>'
+      + '</div></div>';
+  }
+  return h + '</div>';
+}
+
+function renderReqs(){
+  $("#reqN").textContent = D.reqs.filter(q => q.status !== "dropped").length;
+  const box = $("#reqList");
+  if(!D.reqs.length){ box.innerHTML = '<div class="empty">把左边的原话点「→ 需求」，它出现在这里。</div>'; return; }
+  const groups = D.modules.concat([{ id:"", title:"未分类" }]);
+  let h = "";
+  groups.forEach(g => {
+    const list = D.reqs.filter(q => (q.moduleId||"") === (g.id||"") && q.status !== "dropped");
+    if(!list.length) return;
+    h += '<div class="grp"><h3>'+esc(g.title)+'<span class="n">'+list.length+'</span></h3>'
+      + list.map(reqCard).join("") + '</div>';
+  });
+  const dropped = D.reqs.filter(q => q.status === "dropped");
+  if(dropped.length){
+    h += '<div class="grp"><h3>不做清单<span class="n">'+dropped.length+'</span></h3>'
+      + dropped.map(q => '<div class="raw"><div class="t" style="color:var(--muted)">✕ '+esc(q.title)+'</div>'
+        + '<div class="m"><span class="sp"></span><button class="mini" data-a="revive" data-id="'+q.id+'">恢复</button></div></div>').join("")
+      + '</div>';
+  }
+  box.innerHTML = h;
+  paintImgs(box);
+}
+
+const OPLABEL = { add:"新增", update:"修改", veto:"建议不做" };
+function opDesc(op){
+  const t = op.target === "reqs" ? "需求" : op.target === "questions" ? "问题" : op.target === "modules" ? "模块" : op.target;
+  const p = op.patch || {};
+  const what = p.title || p.text || (op.targetId ? "#" + op.targetId : "");
+  return (OPLABEL[op.op]||op.op) + t + (what ? "：" + what : "");
+}
+
+function renderAi(){
+  $("#pendN").textContent = D.pending.length;
+  $("#pendingList").innerHTML = D.pending.length
+    ? D.pending.map(op => '<div class="pend" data-id="'+op.id+'">'
+        + '<div>'+esc(opDesc(op))+'</div>'
+        + (op.note ? '<div class="m">'+esc(op.note)+'</div>' : "")
+        + '<div class="row"><button class="mini go" data-a="accept" data-id="'+op.id+'">接受</button>'
+        + '<button class="mini" data-a="reject" data-id="'+op.id+'">拒绝</button></div></div>').join("")
+    : '<div class="empty">没有待审项。AI 的输出只放这里，不会直接改你的需求。</div>';
+
+  const qs = D.questions.filter(x => !x.answer);
+  $("#qHint").textContent = qs.length ? qs.length + " 个" : "";
+  $("#qList").innerHTML = qs.length
+    ? qs.map(x => '<div class="q"><span>'+esc(x.text)+'</span>'
+        + (x.options||[]).map(o => '<button class="mini" data-a="ans" data-q="'+x.id+'" data-v="'+esc(o)+'">'+esc(o)+'</button>').join("")
+        + '<button class="mini" data-a="qDel" data-q="'+x.id+'">×</button></div>').join("")
+    : '<div class="empty">没有卡住的问题。</div>';
+
+  const p = plan();
+  $("#planHint").textContent = "每天 " + p.budget + " 分钟 · 按顺序填";
+  const names = ["今天","明天","本周剩余"];
+  $("#planList").innerHTML = p.days.map((day,i) => {
+    if(!day.length) return i === 0 ? '<div class="empty">没有待办卡片。</div>' : "";
+    const sum = day.reduce((n,c) => n + (c.estMin||25), 0);
+    return '<div class="plan"><div class="day"><span>'+names[i]+'</span><span>'+sum+'′</span></div>'
+      + day.map(c => '<div class="card" data-id="'+c.id+'"><div class="t">'+esc(c.title)+'</div>'
+          + '<div class="m">'+(c.estMin||25)+'′ · '+esc(modName((reqById(c.reqId)||{}).moduleId))+' · '+esc(c.accept||"")+'</div>'
+          + '<div class="row"><input class="ev" placeholder="做完看到了什么"><button class="mini go" data-a="done" data-id="'+c.id+'">完成</button></div></div>').join("")
+      + '</div>';
+  }).join("");
+}
+
+function renderHarvest(){
+  const done = D.cards.filter(c => c.status === "done");
+  $("#hvHint").textContent = done.length ? done.length + " 张完成卡 → 你现在能：" : "";
+  $("#hvList").innerHTML = done.length
+    ? done.slice().reverse().map(c => {
+        const q = reqById(c.reqId);
+        return '<div class="hv"><div class="t">'+esc(q ? q.title : c.title)+'</div>'
+          + '<div class="m">'+esc(c.evidence || "（没写看到什么）")+' · '+fmt(c.doneAt)+'</div></div>';
+      }).join("")
+    : '<div class="empty">完成一张卡时写「看到了什么」，这里会把它变成「你能做什么」。</div>';
+}
+
+function renderSidebar(){
+  const box = $("#projList");
+  if(!box) return;
+  box.innerHTML = ROOT.projects.map(p => {
+    const n = (p.reqs || []).filter(q => q.status === "spec").length;
+    const on = p.id === ROOT.activeId;
+    return '<div class="pitem' + (on ? " on" : "") + '" data-p="' + p.id + '">'
+      + '<span class="pn">' + esc(p.project.title || "未命名项目") + '</span>'
+      + (n ? '<span class="pc">' + n + '</span>' : '')
+      + '<button class="px" data-a="projDel" data-id="' + p.id + '" title="删除这个项目">×</button></div>';
+  }).join("");
+}
+
+function render(){ renderSidebar(); syncHeader(); renderTray(); renderRaw(); renderReqs(); renderAi(); renderHarvest(); }
+
+/* ---------------- 业务 ---------------- */
+
+function plan(){
+  const b = Math.max(15, Number(D.project.schedule.budgetMin) || 120);
+  const midx = {}; D.modules.forEach((m,i) => midx[m.id] = i);
+  const qidx = {}; D.reqs.forEach((q,i) => qidx[q.id] = i);
+  const todo = D.cards.filter(c => c.status !== "done").slice();
+  todo.sort((a,c) => {
+    const qa = reqById(a.reqId) || {}, qc = reqById(c.reqId) || {};
+    const d1 = (midx[qa.moduleId] === undefined ? 99 : midx[qa.moduleId]) - (midx[qc.moduleId] === undefined ? 99 : midx[qc.moduleId]);
+    if(d1) return d1;
+    return (qidx[a.reqId] === undefined ? 99 : qidx[a.reqId]) - (qidx[c.reqId] === undefined ? 99 : qidx[c.reqId]);
+  });
+  const days = [[],[],[]]; let acc = 0;
+  todo.forEach(c => {
+    let i = Math.floor(acc / b); if(i > 2) i = 2;
+    days[i].push(c); acc += (c.estMin || 25);
+  });
+  return { budget: b, days: days };
+}
+
+function promoteRaw(id){
+  const r = D.raw.find(x => x.id === id); if(!r) return;
+  if(r.reqId){ toast("已经提升过了"); return; }
+  const q = { id: uid("q"), moduleId: D.modules[0] ? D.modules[0].id : "",
+    title: (r.text || "").trim() || "（还没命名）",
+    trigger:"", behavior:"", accept:"", deps:[], estMin:25, status:"draft",
+    images: (r.images || []).slice(),
+    sourceRaw:[id], createdAt: now(), updatedAt: now() };
+  D.reqs.push(q); r.reqId = q.id;
+  OPEN.add(q.id); save(); render();
+  toast("已提升为需求草稿；补上验收才能派发");
+}
+
+function markSpec(id){
+  const q = reqById(id); if(!q) return;
+  if(!(q.accept||"").trim()){ toast("先写验收：能观察到什么算完成"); OPEN.add(id); render(); return; }
+  q.status = "spec"; q.updatedAt = now(); save(); render(); toast("已定：现在可以派发");
+}
+
+function dispatch(id){
+  const q = reqById(id); if(!q) return;
+  if(!(q.accept||"").trim()){ toast("先写验收：能观察到什么算完成"); OPEN.add(id); render(); return; }
+  if(q.status === "dispatched" || q.status === "done"){ toast("已经派发过了"); return; }
+  const est = Number(q.estMin) || 25;
+  const n = Math.max(1, Math.ceil(est / 45));
+  const per = Math.max(10, Math.ceil(est / n));
+  for(let i=0;i<n;i++){
+    D.cards.push({ id: uid("c"), reqId: q.id,
+      title: n > 1 ? q.title + "（" + (i+1) + "/" + n + "）" : q.title,
+      estMin: per, accept: q.accept, status: "todo", doneAt: null, evidence: "" });
+  }
+  q.status = "dispatched"; q.updatedAt = now(); save(); render();
+  toast("已派发 " + n + " 张卡，按时间块排在右边");
+}
+
+function completeCard(id, evidence){
+  const c = D.cards.find(x => x.id === id); if(!c) return;
+  const v = (evidence||"").trim();
+  if(!v){ toast("写一句「看到了什么」才算完成"); return; }
+  c.status = "done"; c.doneAt = now(); c.evidence = v;
+  const mine = D.cards.filter(x => x.reqId === c.reqId);
+  if(mine.every(x => x.status === "done")){
+    const q = reqById(c.reqId);
+    if(q){ q.status = "done"; q.updatedAt = now(); }
+  }
+  save(); render();
+}
+
+function applyOp(op){
+  const t = op.target;
+  if(op.op === "add"){
+    if(!Array.isArray(D[t])) throw new Error("未知目标 " + t);
+    const obj = Object.assign({ id: uid(t.slice(0,2)) }, op.patch || {});
+    if(t === "reqs"){ obj.status = obj.status || "draft"; obj.createdAt = now(); obj.updatedAt = now(); }
+    D[t].push(obj);
+    return;
+  }
+  if(op.op === "update"){
+    if(!Array.isArray(D[t])) throw new Error("未知目标 " + t);
+    const o = D[t].find(x => x.id === op.targetId);
+    if(!o) throw new Error("找不到 " + op.targetId);
+    Object.assign(o, op.patch || {}); o.updatedAt = now();
+    return;
+  }
+  if(op.op === "veto"){
+    const q = reqById(op.targetId);
+    if(!q) throw new Error("找不到 " + op.targetId);
+    q.status = "dropped"; q.updatedAt = now();
+    return;
+  }
+  throw new Error("未知 op " + op.op);
+}
+
+async function copyText(s){
+  try{ await navigator.clipboard.writeText(s); return true; }
+  catch(e){
+    const ta = document.createElement("textarea"); ta.value = s; document.body.appendChild(ta);
+    ta.select(); try{ document.execCommand("copy"); }catch(e2){}
+    ta.remove(); return true;
+  }
+}
+
+/* ---------------- 事件 ---------------- */
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-a]"); if(!b) return;
+  const a = b.dataset.a, id = b.dataset.id, qid = b.dataset.q;
+  if(a === "zoom"){ openLightbox(id); return; }
+  if(a === "trayDel"){ TRAY = TRAY.filter(x => x.id !== id); IDB.del(id); URLS.delete(id); renderTray(); return; }
+  if(a === "promote") return promoteRaw(id);
+  if(a === "rawDel"){
+    const r = D.raw.find(x => x.id === id);
+    if(r && r.images) r.images.forEach(im => { IDB.del(im.id); URLS.delete(im.id); });
+    D.raw = D.raw.filter(x => x.id !== id); save(); render(); return;
+  }
+  if(a === "body"){ if(OPEN.has(id)) OPEN.delete(id); else OPEN.add(id); render(); return; }
+  if(a === "spec") return markSpec(id);
+  if(a === "dispatch") return dispatch(id);
+  if(a === "drop"){
+    const q = reqById(id); if(q){ q.status = "dropped"; q.updatedAt = now(); save(); render(); }
+    return;
+  }
+  if(a === "revive"){
+    const q = reqById(id); if(q){ q.status = "draft"; q.updatedAt = now(); save(); render(); }
+    return;
+  }
+  if(a === "ask"){
+    const text = prompt("要问清什么？（只写问题，答案等你自己填）");
+    if(!text) return;
+    D.questions.push({ id: uid("a"), reqId: id, text: text.trim(), options: [], answer: null });
+    save(); render(); return;
+  }
+  if(a === "ans"){
+    const x = D.questions.find(y => y.id === qid); if(!x) return;
+    x.answer = b.dataset.v; save(); render(); return;
+  }
+  if(a === "qDel"){ D.questions = D.questions.filter(x => x.id !== qid); save(); render(); return; }
+  if(a === "accept"){
+    const op = D.pending.find(x => x.id === id); if(!op) return;
+    try{ applyOp(op); D.pending = D.pending.filter(x => x.id !== id); save(); render(); toast("已接受"); }
+    catch(err){ toast("没接受：" + err.message); }
+    return;
+  }
+  if(a === "reject"){ D.pending = D.pending.filter(x => x.id !== id); save(); render(); return; }
+  if(a === "done"){
+    const card = b.closest(".card");
+    const inp = card ? card.querySelector("input.ev") : null;
+    completeCard(id, inp ? inp.value : "");
+    return;
+  }
+});
+
+document.addEventListener("focusout", e => {
+  const el = e.target;
+  if(!el || !el.dataset || !el.dataset.k) return;
+  const host = el.closest(".req");
+  if(!host) return;
+  const q = reqById(host.dataset.id); if(!q) return;
+  const k = el.dataset.k;
+  let v = el.value;
+  if(k === "estMin") v = Math.max(5, Number(v) || 25);
+  q[k] = v; q.updatedAt = now(); save();
+  if(k === "title" || k === "estMin" || k === "moduleId") render();
+});
+
+$("#rawIn").addEventListener("keydown", e => {
+  if(e.isComposing || (e.key !== "Enter" || !(e.ctrlKey || e.metaKey))) return;
+  e.preventDefault();
+  const v = e.target.value.trim();
+  if(!v && !TRAY.length) return;
+  D.raw.push({ id: uid("r"), text: v, at: now(), status: "new", reqId: null, images: TRAY.slice() });
+  TRAY = []; e.target.value = ""; save(); render();
+  toast(v ? "存下了。要说下一句就继续。" : "图片存下了。可以再补一句说明。");
+});
+
+$("#modAdd").addEventListener("click", () => {
+  const inp = $("#modIn"), v = inp.value.trim(); if(!v) return;
+  D.modules.push({ id: uid("m"), title: v });
+  inp.value = ""; save(); render();
+});
+$("#modIn").addEventListener("keydown", e => { if(e.key === "Enter" && !e.isComposing) $("#modAdd").click(); });
+
+$("#newProj").addEventListener("click", newProject);
+$("#projList").addEventListener("click", e => {
+  const del = e.target.closest('[data-a="projDel"]');
+  if(del){ e.stopPropagation(); deleteProject(del.dataset.id); return; }
+  const it = e.target.closest("[data-p]");
+  if(it && it.dataset.p !== ROOT.activeId) switchProject(it.dataset.p);
+});
+
+$("#slotBtn").addEventListener("click", e => {
+  e.stopPropagation();
+  const p = $("#slotPop");
+  p.hidden = !p.hidden;
+  if(!p.hidden) renderHours();
+});
+document.addEventListener("click", e => {
+  if(!e.target.closest || !e.target.closest(".slots")){
+    const p = $("#slotPop"); if(p) p.hidden = true;
+  }
+});
+$("#hours").addEventListener("pointerdown", e => {
+  const b = e.target.closest("[data-h]"); if(!b) return;
+  e.preventDefault();
+  const h = Number(b.dataset.h);
+  dragging = { on: !new Set(slots()).has(h) };
+  applyHour(h, dragging.on);
+});
+document.addEventListener("pointermove", e => {
+  if(!dragging) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const b = el && el.closest ? el.closest("[data-h]") : null;
+  if(b) applyHour(Number(b.dataset.h), dragging.on);
+});
+document.addEventListener("pointerup", () => {
+  if(!dragging) return;
+  dragging = null; finishSlots();
+});
+$("#slotPop").addEventListener("click", e => {
+  const q = e.target.closest("[data-q]"); if(!q) return;
+  e.stopPropagation();
+  const k = q.dataset.q;
+  if(k === "none") setSlots([]);
+  else if(k === "all") setSlots(Array.from({length:24}, (_, i) => i));
+  else if(k === "eve") setSlots([19,20,21,22,23]);
+  else if(k === "day") setSlots([9,10,11,12,13,14,15,16,17]);
+  renderHours();
+});
+
+document.addEventListener("paste", e => {
+  const files = e.clipboardData && e.clipboardData.files;
+  if(!files || !files.length || !/^image\//.test(files[0].type)) return;
+  const a = document.activeElement;
+  if(a && a.id !== "rawIn" && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) return;
+  e.preventDefault();
+  addFiles(files).then(() => { $("#rawIn").focus(); });
+});
+(function(){
+  const col = $("#colRaw");
+  col.addEventListener("dragover", e => { e.preventDefault(); col.classList.add("drag"); });
+  col.addEventListener("dragleave", () => col.classList.remove("drag"));
+  col.addEventListener("drop", e => {
+    e.preventDefault(); col.classList.remove("drag");
+    if(e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+  });
+})();
+$("#lightbox").addEventListener("click", () => $("#lightbox").classList.remove("on"));
+document.addEventListener("keydown", e => { if(e.key === "Escape") $("#lightbox").classList.remove("on"); });
+
+function bindField(sel, fn){
+  const el = $(sel);
+  el.addEventListener("input", () => { fn(el.value); save(); });
+}
+$("#pTitle").addEventListener("input", e => { D.project.title = e.target.value; save(); renderSidebar(); });
+bindField("#pVision", v => D.project.vision = v);
+bindField("#pBudget", v => {
+  D.project.schedule.budgetMin = Math.max(15, Number(v) || 120);
+  D.project.schedule.autoBudget = false;
+});
+bindField("#pNon",    v => D.project.nonGoals = v.split(/[，,、]/).map(s => s.trim()).filter(Boolean));
+
+$("#copySpec").addEventListener("click", async () => {
+  ROOT.activeId = D.id;
+  const ok = await copyText(JSON.stringify(ROOT, null, 2));
+  toast(ok ? "spec.json 已复制，贴给 AI 让它按规则加条目" : "复制失败，用「导出」");
+});
+function download(text, name){
+  const blob = new Blob([text], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+}
+function blobB64(b){
+  return new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(",")[1]); fr.readAsDataURL(b); });
+}
+async function inlineMedia(list){
+  for(const x of list || []){
+    if(!x.images || !x.images.length) continue;
+    const out = [];
+    for(const im of x.images){
+      const b = await IDB.get(im.id);
+      out.push(b ? Object.assign({}, im, { data: await blobB64(b) }) : im);
+    }
+    x.images = out;
+  }
+}
+$("#exportSpec").addEventListener("click", () => {
+  ROOT.activeId = D.id;
+  download(JSON.stringify(ROOT, null, 2), "spec.json");
+});
+$("#exportMedia").addEventListener("click", async () => {
+  toast("正在打包图片…");
+  ROOT.activeId = D.id;
+  const out = JSON.parse(JSON.stringify(ROOT));
+  for(const p of out.projects){ await inlineMedia(p.raw); await inlineMedia(p.reqs); }
+  download(JSON.stringify(out, null, 2), "spec-with-media.json");
+  toast("导出了，图片已内嵌（发给 AI 用这份）");
+});
+async function hydrateMedia(list){
+  for(const x of list || []){
+    for(const im of x.images || []){
+      if(!im.data) continue;
+      try{
+        const bin = atob(im.data), arr = new Uint8Array(bin.length);
+        for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        await IDB.put(im.id, new Blob([arr], { type: "image/jpeg" }));
+      }catch(e){}
+      delete im.data;
+    }
+  }
+}
+$("#importFile").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0]; if(!f) return;
+  f.text().then(async t => {
+    ROOT = normalizeRoot(JSON.parse(t));
+    for(const p of ROOT.projects){ await hydrateMedia(p.raw); await hydrateMedia(p.reqs); }
+    useProject(ROOT.activeId); save(); render();
+    toast("已导入 " + ROOT.projects.length + " 个项目" + (f.name.indexOf("with-media") >= 0 ? "（含图片）" : ""));
+  }).catch(err => toast("导入失败：" + err.message));
+  e.target.value = "";
+});
+$("#pullFile").addEventListener("click", async () => {
+  try{
+    const r = await fetch("spec.json", { cache: "no-store" });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    ROOT = normalizeRoot(await r.json());
+    useProject(ROOT.activeId); save(); render(); toast("已从 spec.json 载入");
+  }catch(e){ toast("读不到 spec.json：" + e.message + "（用本地服务打开）"); }
+});
+$("#opsAdd").addEventListener("click", () => {
+  const txt = $("#opsIn").value.trim(); if(!txt) return;
+  let j;
+  try{ j = JSON.parse(txt); }catch(e){ toast("不是合法 JSON"); return; }
+  const ops = Array.isArray(j) ? j : (j.ops || []);
+  if(!ops.length){ toast("里面没有 ops"); return; }
+  ops.forEach(o => D.pending.push(Object.assign({ id: uid("x"), source: "ai" }, o)));
+  $("#opsIn").value = ""; save(); render();
+  toast("放进待审 " + ops.length + " 条，逐条点接受");
+});
+$("#copyTodo").addEventListener("click", async () => {
+  const lines = D.cards.filter(c => c.status !== "done").map(c => c.title);
+  if(!lines.length){ toast("没有待办卡片"); return; }
+  const ok = await copyText(lines.join("\n"));
+  toast(ok ? "已复制 " + lines.length + " 行标题，粘进看板批量添加" : "复制失败");
+});
+
+/* ---------------- 启动 ---------------- */
+
+(async function boot(){
+  const local = loadLocal();
+  if(local){ ROOT = local; }
+  else{
+    try{
+      const r = await fetch("spec.json", { cache: "no-store" });
+      if(r.ok) ROOT = normalizeRoot(await r.json());
+    }catch(e){ /* file:// 下没有 fetch：从空白开始 */ }
+  }
+  useProject(ROOT.activeId);
+  save();            // 顺带把旧结构写回 spec/v2
+  render();
+})();
+})();
+</script>
+</body>
+</html>
